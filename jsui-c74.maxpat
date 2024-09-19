@@ -40,11 +40,24 @@
 		"assistshowspatchername" : 0,
 		"boxes" : [ 			{
 				"box" : 				{
+					"format" : 6,
+					"id" : "obj-7",
+					"maxclass" : "flonum",
+					"numinlets" : 1,
+					"numoutlets" : 2,
+					"outlettype" : [ "", "bang" ],
+					"parameter_enable" : 0,
+					"patching_rect" : [ 75.0, 90.0, 50.0, 22.0 ]
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"id" : "obj-4",
 					"maxclass" : "newobj",
 					"numinlets" : 2,
 					"numoutlets" : 0,
-					"patching_rect" : [ 30.0, 270.0, 36.0, 22.0 ],
+					"patching_rect" : [ 75.0, 360.0, 36.0, 22.0 ],
 					"text" : "dac~"
 				}
 
@@ -169,7 +182,7 @@
  ]
 					}
 ,
-					"patching_rect" : [ 30.0, 240.0, 36.0, 22.0 ],
+					"patching_rect" : [ 75.0, 330.0, 36.0, 22.0 ],
 					"text" : "gen~",
 					"varname" : "dsp"
 				}
@@ -185,7 +198,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"parameter_enable" : 0,
-					"patching_rect" : [ 30.0, 30.0, 520.0, 192.0 ]
+					"patching_rect" : [ 75.0, 120.0, 520.0, 192.0 ]
 				}
 
 			}
@@ -208,6 +221,13 @@
 				"patchline" : 				{
 					"destination" : [ "obj-4", 0 ],
 					"source" : [ "obj-3", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-1", 0 ],
+					"source" : [ "obj-7", 0 ]
 				}
 
 			}

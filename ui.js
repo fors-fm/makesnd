@@ -12,8 +12,6 @@ var bgColor = [0.059, 0.055, 0.075, 1];
 
 var TWO_PI = Math.PI * 2;
 
-var genObj = this.patcher.getnamed("dsp");
-
 var EuclideanCircle = function(coords, radius, length, density, offset) {
 	this.coords = coords;
 	this.radius = radius;
@@ -58,16 +56,165 @@ var EuclideanCircle = function(coords, radius, length, density, offset) {
 	}
 }
 
-var Spring = function() {
+var Spring = function(coords, tension) {
+	this.coords = coords;
+	this.tension = tension;
+	
+	this.setHeight = function(x) {
+		this.tension = x;
+	}
+	
 	this.paint = function() {
 		with (mgraphics) {
+			var heightOffset = (1 - this.tension) * 20;
+			var topOffset = (1 - this.tension) * 30;
 			
+			set_source_rgba(lowColor);			
+			ellipse(
+				this.coords[0] + 8, 
+				this.coords[1] - 20,
+				10, 10
+			);
+			stroke();
+			
+
+			
+			ellipse(
+				this.coords[0] + 8, 
+				this.coords[1] + 60, 
+				10, 10
+			);
+			stroke();
+			
+			set_line_cap("round");
+			
+			
+			curve(
+				this.coords[0], 
+				this.coords[1] - 5 + topOffset, 
+				this.tension, 
+				0
+			);			
+							
+			
+			for (var i = 0; i < 4; ++i) {
+				curve(
+					this.coords[0], 
+					this.coords[1] + 5 + i * (10 * this.tension) + heightOffset, 
+					this.tension, 
+					1
+				);
+			}
+			
+			for (var i = 0; i < 4; ++i) {
+				curve(
+					this.coords[0], 
+					this.coords[1] + 5 + i * (10 * this.tension) + heightOffset, 
+					this.tension, 
+					2
+				);
+			}
+						
+			curve(
+				this.coords[0], 
+				this.coords[1] + 45 - heightOffset, 
+				this.tension, 
+				3
+			);
+			
+			
+			set_source_rgba(highColor);
+			rectangle_rounded(
+				this.coords[0] + 7, 
+				this.coords[1] - 21 + topOffset, 
+				12, 12, 4, 4
+			);
+			fill();
+						
+			rectangle_rounded(
+				this.coords[0] + 7, 
+				this.coords[1] + 59 - topOffset, 
+				12, 12, 4, 4
+			);
+			fill();									
+		}
+	}
+	
+	function curve(x, y, height, piece) {
+		with (mgraphics) {
+			switch (piece) {
+				case 0:
+					move_to(x + 1, y + 10 * height)
+					curve_to(
+						x + 1, y + 4 * height,
+						x + 6, y + 1 * height,
+						x + 13, y + 1 * height
+					);
+					rel_line_to(0, -7);
+					
+					set_source_rgba(midColor);
+					stroke();
+					break;
+				
+				case 1:
+					move_to(x + 1, y + 10 * height);
+					curve_to(
+						x + 1, y + 5 * height,
+						x + 6, y + 1 * height,
+						x + 14.5, y + 1 * height
+					);
+					curve_to(
+						x + 17.75, y + 1 * height,
+						x + 22, y + 2.25 * height,
+						x + 22, y + 5 * height
+					);
+					
+					set_source_rgba(lowColor);
+					stroke();
+					break;
+					
+				case 2:
+					move_to(x + 1, y)
+					curve_to(
+						x + 1, y + 5 * height,
+						x + 6, y + 9 * height,
+						x + 14.5, y + 9 * height
+					);
+					curve_to(
+						x + 17.75, y + 9 * height,
+						x + 22, y + 7.75 * height,
+						x + 22, y + 5 * height
+					);
+					
+					set_source_rgba(midColor);
+					stroke();
+					break;
+					
+				case 3:
+					move_to(x + 1, y);
+					curve_to(
+						x + 1, y + 6 * height,
+						x + 6, y + 9 * height,
+						x + 13, y + 9 * height
+					);
+					rel_line_to(0, 7);
+					
+					set_source_rgba(midColor);
+					stroke();
+					break;
+			}
 		}
 	}
 }
 
 var euclidean0 = new EuclideanCircle([96, 96], 45, 8, 0.2, 0.1);
 var euclidean1 = new EuclideanCircle([96, 96], 25, 8, 0.4, 0);
+var spring = new Spring([200, 71], 0.75);
+
+function msg_float(x) {
+	spring.setHeight(x);
+	mgraphics.redraw();
+}
 
 function paint() {
 	with (mgraphics) {
@@ -77,6 +224,8 @@ function paint() {
 				
 		euclidean0.paint(lowColor);
 		euclidean1.paint(midColor);
+		
+		spring.paint();		
 	}	
 }
 
