@@ -308,19 +308,19 @@ var Cube = function(coords, rx, ry) {
 
     var vertices = [
         new Vertex(this.coords[0] - size, this.coords[1] - size, -size),
-        new Vertex(this.coords[0] + size * 0, this.coords[1] - size, -size),
-        new Vertex(this.coords[0] + size * 0, this.coords[1] + size, -size),
-        new Vertex(this.coords[0] - size * 0, this.coords[1] + size, -size),
-        new Vertex(this.coords[0] - size * 0, this.coords[1] - size, size),
+        new Vertex(this.coords[0] + size, this.coords[1] - size, -size),
+        new Vertex(this.coords[0] + size, this.coords[1] + size, -size),
+        new Vertex(this.coords[0] - size, this.coords[1] + size, -size),
+        new Vertex(this.coords[0] - size, this.coords[1] - size, size),
         new Vertex(this.coords[0] + size, this.coords[1] - size, size),
         new Vertex(this.coords[0] + size, this.coords[1] + size, size),
         new Vertex(this.coords[0] - size, this.coords[1] + size, size)
     ];
 
     var edges = [
-        [0, 1], [1, 2], [2, 3], [3, 0],
-        [4, 5], [5, 6], [6, 7], [7, 4],
-        [0, 4], [1, 5], [2, 6], [3, 7]
+        [0, 1], [1, 2], [2, 3], [3, 0],        
+        [0, 4], [1, 5], [2, 6], [3, 7],
+		[4, 5], [5, 6], [6, 7], [7, 4]
     ];
 	
 	this.onidle = function(x, y) {
@@ -334,11 +334,9 @@ var Cube = function(coords, rx, ry) {
 		} else {
 			hoverCube = 0;
 		}
-	}		
+	}	
 	
-	this.rotate = function(rx, ry, rz) {
-
-		
+	this.rotate = function(rx, ry, rz) {		
 		for (var i = 0; i < vertices.length; ++i) {
 			var dx = vertices[i].x - this.coords[0];
 			var dy = vertices[i].y - this.coords[1];
@@ -373,19 +371,19 @@ var Cube = function(coords, rx, ry) {
 			
 			for (var i = 0; i < edges.length; ++i) {
 				var edge = edges[i];
-				
+
 				if (i < 4) {
 					set_source_rgba(lowColor);
 				} else if (i < 8) {
-					set_source_rgba(highColor);
-				} else {
 					set_source_rgba(midColor);
+				} else {
+					set_source_rgba(highColor);
 				}
 				
 				move_to(vertices[edge[0]].x, vertices[edge[0]].y);
             	line_to(vertices[edge[1]].x, vertices[edge[1]].y);
             	stroke();
-			}			
+			}
 		}
 	}
 }
