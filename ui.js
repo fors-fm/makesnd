@@ -12,7 +12,11 @@ var bgColor = [0.059, 0.055, 0.075, 1];
 
 var TWO_PI = Math.PI * 2;
 
-var EuclideanCircle = function(coords, radius, length, density, offset) {
+var hoverEuclid = 0;
+var hoverSpring = 0;
+
+var EuclideanCircle = function(id, coords, radius, length, density, offset) {
+	this.id = id;
 	this.coords = coords;
 	this.radius = radius;
 	
@@ -23,8 +27,8 @@ var EuclideanCircle = function(coords, radius, length, density, offset) {
 	
 	this.paint = function(color) {
 		with (mgraphics) {						
-			set_source_rgba(this.hover ? hoverColor : color);
-			set_line_width(this.hover ? 2 : 2);
+			set_source_rgba(hoverEuclid == this.id ? hoverColor : color);
+			set_line_width(hoverEuclid == this.id ? 2 : 2);
 			
 			arc(this.coords[0], this.coords[1], this.radius, 0, TWO_PI);
 			stroke();
@@ -48,10 +52,15 @@ var EuclideanCircle = function(coords, radius, length, density, offset) {
 	}
 	
 	this.onidle = function(x, y) {
-		if (x > this.coords[0] - this.radius - 8 && x < this.coords[0] - this.radius + 12) {
-			this.hover = true;
-		} else {
-			this.hover = false;
+		if (
+			x > this.coords[0] - this.radius - 5 && 
+			x < this.coords[0] + this.radius + 5 && 
+			y > this.coords[1] - this.radius - 5 && 
+			y < this.coords[1] + this.radius + 5
+		) {
+			hoverEuclid = this.id;
+		} else if (x > 145 || x < 45 || y < 45 || y > 145) {
+			hoverEuclid = 0;
 		}
 	}
 }
@@ -76,9 +85,7 @@ var Spring = function(coords, tension) {
 				10, 10
 			);
 			stroke();
-			
-
-			
+						
 			ellipse(
 				this.coords[0] + 8, 
 				this.coords[1] + 60, 
@@ -86,8 +93,7 @@ var Spring = function(coords, tension) {
 			);
 			stroke();
 			
-			set_line_cap("round");
-			
+			set_line_cap("round");			
 			
 			curve(
 				this.coords[0], 
@@ -95,8 +101,7 @@ var Spring = function(coords, tension) {
 				this.tension, 
 				0
 			);			
-							
-			
+										
 			for (var i = 0; i < 4; ++i) {
 				curve(
 					this.coords[0], 
@@ -121,8 +126,7 @@ var Spring = function(coords, tension) {
 				this.tension, 
 				3
 			);
-			
-			
+						
 			set_source_rgba(highColor);
 			rectangle_rounded(
 				this.coords[0] + 7, 
@@ -207,8 +211,8 @@ var Spring = function(coords, tension) {
 	}
 }
 
-var euclidean0 = new EuclideanCircle([96, 96], 45, 8, 0.2, 0.1);
-var euclidean1 = new EuclideanCircle([96, 96], 25, 8, 0.4, 0);
+var euclidean0 = new EuclideanCircle(1, [96, 96], 45, 8, 0.2, 0.1);
+var euclidean1 = new EuclideanCircle(2, [96, 96], 25, 8, 0.4, 0);
 var spring = new Spring([200, 71], 0.75);
 
 function msg_float(x) {
@@ -233,4 +237,12 @@ function onidle(x, y) {
 	euclidean0.onidle(x, y);
 	euclidean1.onidle(x, y);
 	mgraphics.redraw();
+}
+
+function onclick(x, y) {
+	
+}
+
+function ondrag(x, y) {
+	
 }
