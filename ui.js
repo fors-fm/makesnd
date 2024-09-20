@@ -13,8 +13,9 @@ var bgColor = [0.059, 0.055, 0.075, 1];
 var TWO_PI = Math.PI * 2;
 
 var hoverEuclid = 0;
-var hoverSpring = 0;
 var hoverLines = 0;
+var hoverCube = 0;
+var hoverSpring = 0;
 
 var EuclideanCircle = function(id, coords, radius, length, density, offset) {
 	this.id = id;
@@ -24,7 +25,7 @@ var EuclideanCircle = function(id, coords, radius, length, density, offset) {
 	this.length = length;
 	this.density = Math.round(density * this.length);
 	this.offset = Math.round(offset * this.length);
-	this.hover = false
+	this.hover = false;
 	
 	this.paint = function(color) {
 		with (mgraphics) {						
@@ -278,13 +279,124 @@ var Lines = function(coords, move, skew) {
 		} else {
 			hoverLines = 0;
 		}
-	}	
+	}
+}
+
+var Vertex = function(x, y, z) {
+		this.x = x;
+		this.y = y;
+		this.z = z;
+	}
+
+var Cube = function(coords, rx, ry) {
+	this.coords = coords;
+	this.rx = rx;
+	this.ry = ry;		
+	
+    var size = 28;
+
+	this.setValue = function(rx, ry) {
+		this.rx = clamp(this.rx - rx, 0, 360);
+		this.ry = clamp(this.ry + ry, 0, 360);
+		
+		this.rotate(rx, ry, 0);
+	}
+	
+	this.getValue = function() {
+		return [this.rx, this.ry];
+	}
+
+    var vertices = [
+        new Vertex(this.coords[0] - size, this.coords[1] - size, -size),
+        new Vertex(this.coords[0] + size * 0, this.coords[1] - size, -size),
+        new Vertex(this.coords[0] + size * 0, this.coords[1] + size, -size),
+        new Vertex(this.coords[0] - size * 0, this.coords[1] + size, -size),
+        new Vertex(this.coords[0] - size * 0, this.coords[1] - size, size),
+        new Vertex(this.coords[0] + size, this.coords[1] - size, size),
+        new Vertex(this.coords[0] + size, this.coords[1] + size, size),
+        new Vertex(this.coords[0] - size, this.coords[1] + size, size)
+    ];
+
+    var edges = [
+        [0, 1], [1, 2], [2, 3], [3, 0],
+        [4, 5], [5, 6], [6, 7], [7, 4],
+        [0, 4], [1, 5], [2, 6], [3, 7]
+    ];
+	
+	this.onidle = function(x, y) {
+		if (
+			x > this.coords[0] - 5 && 
+			x < this.coords[0] + 78 && 
+			y > this.coords[1] - 20 && 
+			y < this.coords[1] + 75
+		) {
+			hoverCube = 1;
+		} else {
+			hoverCube = 0;
+		}
+	}		
+	
+	this.rotate = function(rx, ry, rz) {
+
+		
+		for (var i = 0; i < vertices.length; ++i) {
+			var dx = vertices[i].x - this.coords[0];
+			var dy = vertices[i].y - this.coords[1];
+			var x = dx * Math.cos(rx) - dy * Math.sin(rx);
+			var y = dx * Math.sin(rx) + dy * Math.cos(rx);
+			vertices[i].x = x + this.coords[0];
+			vertices[i].y = y + this.coords[1];
+    	}
+
+		for (var i = 0; i < vertices.length; ++i) {
+			var dy = vertices[i].y - this.coords[1];
+			var dz = vertices[i].z;
+			var y = dy * Math.cos(ry) - dz * Math.sin(ry);
+			var z = dy * Math.sin(ry) + dz * Math.cos(ry);
+			vertices[i].y = y + this.coords[1];
+			vertices[i].z = z;
+		}
+
+		for (var i = 0; i < vertices.length; ++i) {
+			var dx = vertices[i].x - this.coords[0];
+			var dz = vertices[i].z;
+			var x = dz * Math.sin(rz) + dx * Math.cos(rz);
+			var z = dz * Math.cos(rz) - dx * Math.sin(rz);
+			vertices[i].x = x + this.coords[0];
+			vertices[i].z = z;
+		}
+	}
+	
+	this.paint = function() {
+		with (mgraphics) {
+			set_line_cap("round");
+			
+			for (var i = 0; i < edges.length; ++i) {
+				var edge = edges[i];
+				
+				if (i < 4) {
+					set_source_rgba(lowColor);
+				} else if (i < 8) {
+					set_source_rgba(highColor);
+				} else {
+					set_source_rgba(midColor);
+				}
+				
+				move_to(vertices[edge[0]].x, vertices[edge[0]].y);
+            	line_to(vertices[edge[1]].x, vertices[edge[1]].y);
+            	stroke();
+			}			
+		}
+	}
 }
 
 var euclidOuter = new EuclideanCircle(1, [96, 96], 45, 8, 0.2, 0.1);
 var euclidInner = new EuclideanCircle(2, [96, 96], 25, 8, 0.4, 0);
-var spring = new Spring([310, 71], 1);
 var lines = new Lines([190, 71], 0.75, 0.75);
+var cube = new Cube([350, 95], 1);
+var spring = new Spring([440, 71], 1);
+
+cube.rotate(45, 25, 0);
 
 function paint() {
 	with (mgraphics) {
@@ -294,10 +406,12 @@ function paint() {
 				
 		euclidOuter.paint(lowColor);
 		euclidInner.paint(midColor);
-		
+			
 		spring.paint();
 		
 		lines.paint();
+		
+		cube.paint();
 	}
 	
 	outlet(0, "spring", spring.getValue());
@@ -308,6 +422,7 @@ function onidle(x, y) {
 	euclidInner.onidle(x, y);
 	spring.onidle(x, y);
 	lines.onidle(x, y);
+	cube.onidle(x, y);
 	
 	mgraphics.redraw();
 }
@@ -315,6 +430,8 @@ function onidle(x, y) {
 function onidleout() {
 	hoverEuclid = 0;
 	hoverSpring = 0;
+	hoverLines = 0;
+	hoverCube = 0;
 	mgraphics.redraw();
 }
 
@@ -351,6 +468,10 @@ function ondrag(x, y, but) {
 		
 		if (hoverLines) {
 			lines.setValue(cursorDelta[0] / 100, cursorDelta[1] / 100);
+		}
+		
+		if (hoverCube) {
+			cube.setValue(cursorDelta[0] / 100, cursorDelta[1] / 100);
 		}
 	}
 	
