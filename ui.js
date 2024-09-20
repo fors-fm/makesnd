@@ -14,6 +14,7 @@ var TWO_PI = Math.PI * 2;
 
 var hoverEuclid = 0;
 var hoverSpring = 0;
+var hoverLines = 0;
 
 var EuclideanCircle = function(id, coords, radius, length, density, offset) {
 	this.id = id;
@@ -228,9 +229,62 @@ var Spring = function(coords, tension) {
 	}
 }
 
+var Lines = function(coords, move, skew) {
+	this.coords = coords;
+	this.move = move;
+	this.skew = skew;
+	
+	this.setValue = function(x, y) {
+		this.move = clamp(this.move - y, 0, 1);
+		this.skew = clamp(this.skew + x, 0, 1);
+	}
+	
+	this.getValue = function() {
+		return [this.move, this.skew];
+	}
+	
+	this.paint = function() {
+		with (mgraphics) {
+			set_line_cap("none");
+			
+			var skewScaled = (this.skew * 2 - 1) * 20;
+			var height = (this.move * 2 - 1) * 20;
+			
+			for (var i = 0; i < 6; ++i) {
+				if (i == 0) {
+					set_source_rgba(highColor);
+				} else if (i < 3) {
+					set_source_rgba(hoverLines ? hoverColor : midColor);
+				} else {
+					set_source_rgba(hoverLines && i < 5 ? hoverColor : lowColor);
+				}
+				
+				move_to(this.coords[0], this.coords[1] + 1 + i * 10)
+				line_to(this.coords[0] + 36 + skewScaled, this.coords[1] + 1 + i * 10 - height);
+				line_to(this.coords[0] + 72, this.coords[1] + 1 + i * 10);
+				stroke();
+			}
+		}		
+	}
+	
+	this.onidle = function(x, y) {
+		if (
+			x > this.coords[0] - 5 && 
+			x < this.coords[0] + 78 && 
+			y > this.coords[1] - 20 && 
+			y < this.coords[1] + 75
+		) {
+			hoverLines = 1;
+		} else {
+			hoverLines = 0;
+		}
+	}	
+}
+
 var euclidOuter = new EuclideanCircle(1, [96, 96], 45, 8, 0.2, 0.1);
 var euclidInner = new EuclideanCircle(2, [96, 96], 25, 8, 0.4, 0);
-var spring = new Spring([200, 71], 1);
+var spring = new Spring([310, 71], 1);
+var lines = new Lines([190, 71], 0.75, 0.75);
 
 function paint() {
 	with (mgraphics) {
@@ -241,7 +295,9 @@ function paint() {
 		euclidOuter.paint(lowColor);
 		euclidInner.paint(midColor);
 		
-		spring.paint();		
+		spring.paint();
+		
+		lines.paint();
 	}
 	
 	outlet(0, "spring", spring.getValue());
@@ -251,6 +307,7 @@ function onidle(x, y) {
 	euclidOuter.onidle(x, y);
 	euclidInner.onidle(x, y);
 	spring.onidle(x, y);
+	lines.onidle(x, y);
 	
 	mgraphics.redraw();
 }
@@ -290,6 +347,10 @@ function ondrag(x, y, but) {
 	} else {	
 		if (hoverSpring) {
 			spring.setValue(cursorDelta[1] / 100);
+		}
+		
+		if (hoverLines) {
+			lines.setValue(cursorDelta[0] / 100, cursorDelta[1] / 100);
 		}
 	}
 	
