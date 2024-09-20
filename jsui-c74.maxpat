@@ -40,14 +40,15 @@
 		"assistshowspatchername" : 0,
 		"boxes" : [ 			{
 				"box" : 				{
-					"format" : 6,
-					"id" : "obj-7",
-					"maxclass" : "flonum",
+					"border" : 0,
+					"filename" : "ui.js",
+					"id" : "obj-1",
+					"maxclass" : "jsui",
 					"numinlets" : 1,
-					"numoutlets" : 2,
-					"outlettype" : [ "", "bang" ],
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
 					"parameter_enable" : 0,
-					"patching_rect" : [ 75.0, 90.0, 50.0, 22.0 ]
+					"patching_rect" : [ 135.0, 150.0, 520.0, 192.0 ]
 				}
 
 			}
@@ -57,7 +58,7 @@
 					"maxclass" : "newobj",
 					"numinlets" : 2,
 					"numoutlets" : 0,
-					"patching_rect" : [ 75.0, 360.0, 36.0, 22.0 ],
+					"patching_rect" : [ 135.0, 390.0, 36.0, 22.0 ],
 					"text" : "dac~"
 				}
 
@@ -121,7 +122,7 @@
 							}
 , 							{
 								"box" : 								{
-									"code" : "Param hej;\r\n\r\nout1 = 0;\r\nout2 = 0;",
+									"code" : "Param spring;\r\n\r\nout1 = 0;\r\nout2 = 0;",
 									"fontface" : 0,
 									"fontname" : "<Monospaced>",
 									"fontsize" : 12.0,
@@ -182,23 +183,9 @@
  ]
 					}
 ,
-					"patching_rect" : [ 75.0, 330.0, 36.0, 22.0 ],
+					"patching_rect" : [ 135.0, 360.0, 36.0, 22.0 ],
 					"text" : "gen~",
 					"varname" : "dsp"
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"border" : 0,
-					"filename" : "ui.js",
-					"id" : "obj-1",
-					"maxclass" : "jsui",
-					"numinlets" : 1,
-					"numoutlets" : 1,
-					"outlettype" : [ "" ],
-					"parameter_enable" : 0,
-					"patching_rect" : [ 75.0, 120.0, 520.0, 192.0 ]
 				}
 
 			}
@@ -224,13 +211,6 @@
 				}
 
 			}
-, 			{
-				"patchline" : 				{
-					"destination" : [ "obj-1", 0 ],
-					"source" : [ "obj-7", 0 ]
-				}
-
-			}
  ],
 		"dependency_cache" : [ 			{
 				"name" : "ui.js",
@@ -240,7 +220,8 @@
 				"implicit" : 1
 			}
  ],
-		"autosave" : 0
+		"autosave" : 0,
+		"bgcolor" : [ 0.898039, 0.898039, 0.898039, 1.0 ]
 	}
 
 }

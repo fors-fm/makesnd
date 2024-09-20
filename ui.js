@@ -69,8 +69,25 @@ var Spring = function(coords, tension) {
 	this.coords = coords;
 	this.tension = tension;
 	
-	this.setHeight = function(x) {
-		this.tension = x;
+	this.setValue = function(x) {
+		this.tension = clamp(this.tension - x, 0.35, 1);
+	}
+	
+	this.getValue = function() {
+		return this.tension;
+	}
+	
+	this.onidle = function(x, y) {
+		if (
+			x > this.coords[0] - 5 && 
+			x < this.coords[0] + 28 && 
+			y > this.coords[1] - 20 && 
+			y < this.coords[1] + 75
+		) {
+			hoverSpring = 1;
+		} else {
+			hoverSpring = 0;
+		}
 	}
 	
 	this.paint = function() {
@@ -156,7 +173,7 @@ var Spring = function(coords, tension) {
 					);
 					rel_line_to(0, -7);
 					
-					set_source_rgba(midColor);
+					set_source_rgba(hoverSpring ? hoverColor : midColor);
 					stroke();
 					break;
 				
@@ -190,7 +207,7 @@ var Spring = function(coords, tension) {
 						x + 22, y + 5 * height
 					);
 					
-					set_source_rgba(midColor);
+					set_source_rgba(hoverSpring ? hoverColor : midColor);
 					stroke();
 					break;
 					
@@ -203,7 +220,7 @@ var Spring = function(coords, tension) {
 					);
 					rel_line_to(0, 7);
 					
-					set_source_rgba(midColor);
+					set_source_rgba(hoverSpring ? hoverColor : midColor);
 					stroke();
 					break;
 			}
@@ -211,14 +228,9 @@ var Spring = function(coords, tension) {
 	}
 }
 
-var euclidean0 = new EuclideanCircle(1, [96, 96], 45, 8, 0.2, 0.1);
-var euclidean1 = new EuclideanCircle(2, [96, 96], 25, 8, 0.4, 0);
-var spring = new Spring([200, 71], 0.75);
-
-function msg_float(x) {
-	spring.setHeight(x);
-	mgraphics.redraw();
-}
+var euclidOuter = new EuclideanCircle(1, [96, 96], 45, 8, 0.2, 0.1);
+var euclidInner = new EuclideanCircle(2, [96, 96], 25, 8, 0.4, 0);
+var spring = new Spring([200, 71], 1);
 
 function paint() {
 	with (mgraphics) {
@@ -226,23 +238,65 @@ function paint() {
 		rectangle_rounded(0, 0, 520, 192, 8, 8);
 		fill();
 				
-		euclidean0.paint(lowColor);
-		euclidean1.paint(midColor);
+		euclidOuter.paint(lowColor);
+		euclidInner.paint(midColor);
 		
 		spring.paint();		
-	}	
+	}
+	
+	outlet(0, "spring", spring.getValue());
 }
 
 function onidle(x, y) {
-	euclidean0.onidle(x, y);
-	euclidean1.onidle(x, y);
+	euclidOuter.onidle(x, y);
+	euclidInner.onidle(x, y);
+	spring.onidle(x, y);
+	
 	mgraphics.redraw();
 }
 
-function onclick(x, y) {
-	
+function onidleout() {
+	hoverEuclid = 0;
+	hoverSpring = 0;
+	mgraphics.redraw();
 }
 
-function ondrag(x, y) {
+var cursorClick = [0, 0];
+var cursorPrev = [0, 0];
+
+function onclick(x, y) {	
+	cursorClick = [x, y];
+	cursorPrev = [x, y];
 	
+	mgraphics.redraw();
+}
+
+function ondrag(x, y, but) {
+	var cursorDelta = [x - cursorPrev[0], y - cursorPrev[1]];
+	
+	if (!but) {
+		/*
+		TODO: mouse hiding etc
+		
+		max.showcursor();
+		var p = this.patcher.wind.location;
+		var r = this.box.rect;
+		
+		max.pupdate(
+			p[0] + r[0] + cursorClick[0], 
+			p[1] + r[1] + cursorClick[1]
+		);
+		*/
+	} else {	
+		if (hoverSpring) {
+			spring.setValue(cursorDelta[1] / 100);
+		}
+	}
+	
+	cursorPrev = [x, y];
+	mgraphics.redraw();
+}
+
+function clamp(x, low, high) {
+	return Math.min(Math.max(x, low), high);
 }
