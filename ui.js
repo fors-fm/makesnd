@@ -17,16 +17,40 @@ var hoverLines = 0;
 var hoverCube = 0;
 var hoverSpring = 0;
 
+var timeTask = new Task(timescale, this);
+var timePhase = 0;
+
+timeTask.interval = 30;
+timeTask.repeat();
+timeTask.execute();
+
+function timescale() {
+	timePhase += 0.001;
+	
+	if (timePhase >= 1) {
+		timePhase -= 1;
+	}
+	
+	cube.rotate(0.0011, -0.0037, 0.0023);
+	refresh();
+}
+
 var EuclideanCircle = function(id, coords, radius, length, density, offset) {
 	this.id = id;
 	this.coords = coords;
 	this.radius = radius;
 	
 	this.length = length;
-	this.density = Math.round(density * this.length);
-	this.offset = Math.round(offset * this.length);
+	this.density = density;
+	this.offset = offset;
 	this.hover = false;
 	
+	this.setValue = function(x, y) {		
+		//this.offset = clamp(this.offset - x, 0, 1);
+		this.length = clamp(this.length - x, 0, 1);
+		this.density = clamp(this.density - y, 0, 1);	
+	}
+
 	this.paint = function(color) {
 		with (mgraphics) {						
 			set_source_rgba(hoverEuclid == this.id ? hoverColor : color);
@@ -36,16 +60,20 @@ var EuclideanCircle = function(id, coords, radius, length, density, offset) {
 			stroke();
 						
 			set_source_rgba(highColor);
-									
-			for (var i = 0; i < this.length; ++i) {				
+				
+			var length = Math.round(this.length * 16);
+			var density = Math.round(this.density * length);
+			var offset = Math.round(this.offset * length);
+																			
+			for (var i = 0; i < length; ++i) {				
 				var pos = [
-					Math.sin(i / this.length * TWO_PI + Math.PI) * radius - 6,
-					Math.cos(i / this.length * TWO_PI + Math.PI) * radius - 6
-				];
+					Math.sin(i / length * TWO_PI + Math.PI) * radius - 6,
+					Math.cos(i / length * TWO_PI + Math.PI) * radius - 6
+				];								
 				
-				var step = ((i + this.length) - this.offset) * this.density;
+				var step = ((i + length) - offset) * density;
 				
-				if (step % this.length < this.density) {
+				if (step % length < density) {
 					ellipse(this.coords[0] + pos[0], this.coords[1] + pos[1], 12, 12);
 					fill();
 				}
@@ -192,7 +220,7 @@ var Spring = function(coords, tension) {
 						x + 22, y + 5 * height
 					);
 					
-					set_source_rgba(lowColor);
+					set_source_rgba(hoverSpring ? hoverColor : lowColor);
 					stroke();
 					break;
 					
@@ -257,12 +285,12 @@ var Lines = function(coords, move, skew) {
 				} else if (i < 3) {
 					set_source_rgba(hoverLines ? hoverColor : midColor);
 				} else {
-					set_source_rgba(hoverLines && i < 5 ? hoverColor : lowColor);
+					set_source_rgba(hoverLines ? hoverColor : lowColor);
 				}
 				
-				move_to(this.coords[0], this.coords[1] + 1 + i * 10)
-				line_to(this.coords[0] + 36 + skewScaled, this.coords[1] + 1 + i * 10 - height);
-				line_to(this.coords[0] + 72, this.coords[1] + 1 + i * 10);
+				move_to(this.coords[0], this.coords[1] + 1 + i * 11)
+				line_to(this.coords[0] + 40 + skewScaled, this.coords[1] + 1 + i * 11 - height);
+				line_to(this.coords[0] + 76, this.coords[1] + 1 + i * 11);
 				stroke();
 			}
 		}		
@@ -293,28 +321,17 @@ var Cube = function(coords, rx, ry) {
 	this.rx = rx;
 	this.ry = ry;		
 	
-    var size = 28;
-
-	this.setValue = function(rx, ry) {
-		this.rx = clamp(this.rx - rx, 0, 360);
-		this.ry = clamp(this.ry + ry, 0, 360);
-		
-		this.rotate(rx, ry, 0);
-	}
-	
-	this.getValue = function() {
-		return [this.rx, this.ry];
-	}
+    var size = 30;	
 
     var vertices = [
         new Vertex(this.coords[0] - size, this.coords[1] - size, -size),
         new Vertex(this.coords[0] + size, this.coords[1] - size, -size),
         new Vertex(this.coords[0] + size, this.coords[1] + size, -size),
         new Vertex(this.coords[0] - size, this.coords[1] + size, -size),
-        new Vertex(this.coords[0] - size, this.coords[1] - size, size),
-        new Vertex(this.coords[0] + size, this.coords[1] - size, size),
-        new Vertex(this.coords[0] + size, this.coords[1] + size, size),
-        new Vertex(this.coords[0] - size, this.coords[1] + size, size)
+        new Vertex(this.coords[0] - size * 0.2, this.coords[1] - size, size),
+        new Vertex(this.coords[0] + size * 0.2, this.coords[1] - size, size),
+        new Vertex(this.coords[0] + size * 0.2, this.coords[1] + size, size),
+        new Vertex(this.coords[0] - size * 0.2, this.coords[1] + size, size)
     ];
 
     var edges = [
@@ -334,7 +351,38 @@ var Cube = function(coords, rx, ry) {
 		} else {
 			hoverCube = 0;
 		}
-	}	
+	}
+	
+	this.vertexRotate = function(id, axis, value) {
+		switch (axis) {
+			case "x":
+				var dx = vertices[id].x - this.coords[0];
+				var dy = vertices[id].y - this.coords[1];
+				var x = dx * Math.cos(value) - dy * Math.sin(value);
+				var y = dx * Math.sin(value) + dy * Math.cos(value);
+				vertices[id].x = x + this.coords[0];
+				vertices[id].y = y + this.coords[1];
+				break;
+				
+			case "y":
+				var dy = vertices[id].y - this.coords[1];
+				var dz = vertices[id].z;
+				var y = dy * Math.cos(value) - dz * Math.sin(value);
+				var z = dy * Math.sin(value) + dz * Math.cos(value);
+				vertices[id].y = y + this.coords[1];
+				vertices[id].z = z;
+				break;
+				
+			case "z":
+				var dx = vertices[id].x - this.coords[0];
+				var dz = vertices[id].z;
+				var x = dz * Math.sin(value) + dx * Math.cos(value);
+				var z = dz * Math.cos(value) - dx * Math.sin(value);
+				vertices[id].x = x + this.coords[0];
+				vertices[id].z = z;
+				break;
+		}				
+	}
 	
 	this.rotate = function(rx, ry, rz) {		
 		for (var i = 0; i < vertices.length; ++i) {
@@ -365,6 +413,17 @@ var Cube = function(coords, rx, ry) {
 		}
 	}
 	
+	this.setValue = function(rx, ry) {
+		this.rx = clamp(this.rx - rx, 0, 1);
+		this.ry = clamp(this.ry + ry, 0, 1);
+		
+		this.rotate(rx, ry, 0);
+	}
+	
+	this.getValue = function() {
+		return [this.rx, this.ry];
+	}
+	
 	this.paint = function() {
 		with (mgraphics) {
 			set_line_cap("round");
@@ -373,9 +432,9 @@ var Cube = function(coords, rx, ry) {
 				var edge = edges[i];
 
 				if (i < 4) {
-					set_source_rgba(lowColor);
+					set_source_rgba(hoverCube ? hoverColor : lowColor);
 				} else if (i < 8) {
-					set_source_rgba(midColor);
+					set_source_rgba(hoverCube ? hoverColor : midColor);
 				} else {
 					set_source_rgba(highColor);
 				}
@@ -388,13 +447,13 @@ var Cube = function(coords, rx, ry) {
 	}
 }
 
-var euclidOuter = new EuclideanCircle(1, [96, 96], 45, 8, 0.2, 0.1);
-var euclidInner = new EuclideanCircle(2, [96, 96], 25, 8, 0.4, 0);
+var euclidOuter = new EuclideanCircle(1, [96, 96], 45, 1, 0.2, 0.1);
+var euclidInner = new EuclideanCircle(2, [96, 96], 25, 1, 0.4, 0);
 var lines = new Lines([190, 71], 0.75, 0.75);
-var cube = new Cube([350, 95], 1);
+var cube = new Cube([350, 95], 1, 1);
 var spring = new Spring([440, 71], 1);
 
-cube.rotate(45, 25, 0);
+cube.rotate(-45, 45, 0);
 
 function paint() {
 	with (mgraphics) {
@@ -404,15 +463,15 @@ function paint() {
 				
 		euclidOuter.paint(lowColor);
 		euclidInner.paint(midColor);
-			
 		spring.paint();
-		
-		lines.paint();
-		
+		lines.paint();	
 		cube.paint();
+		
+		outlet(0, "d0", euclidOuter.density);
+		outlet(0, "l0", euclidOuter.length);		
+		outlet(0, "d1", euclidInner.density);
+		outlet(0, "l1", euclidInner.length);
 	}
-	
-	outlet(0, "spring", spring.getValue());
 }
 
 function onidle(x, y) {
@@ -459,7 +518,15 @@ function ondrag(x, y, but) {
 			p[1] + r[1] + cursorClick[1]
 		);
 		*/
-	} else {	
+	} else {
+		if (hoverEuclid == 1) {
+			euclidOuter.setValue(cursorDelta[0] / 300, cursorDelta[1] / 300);
+		}
+		
+		if (hoverEuclid == 2) {
+			euclidInner.setValue(cursorDelta[0] / 300, cursorDelta[1] / 300);
+		}
+		
 		if (hoverSpring) {
 			spring.setValue(cursorDelta[1] / 100);
 		}
