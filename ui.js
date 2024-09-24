@@ -1,5 +1,3 @@
-outlets = 1;
-
 mgraphics.init();
 mgraphics.relative_coords = 0;
 mgraphics.autofill = 0;
@@ -17,8 +15,11 @@ var hoverLines = 0;
 var hoverCube = 0;
 var hoverSpring = 0;
 
+function bang() {
+	
+}
+
 var timeTask = new Task(timescale, this);
-var timePhase = 0;
 
 timeTask.interval = 30;
 timeTask.repeat();
@@ -35,26 +36,135 @@ function timescale() {
 	refresh();
 }
 
+var Step = function() {
+	this.active = 0;
+	
+	this.phase = 0;
+	this.busy = false;
+	this.repeats = 35;
+	this.interval = 4;
+			
+	this.animate = function() {
+		this.phase = 1 - arguments.callee.task.iterations / (this.repeats);	
+	}
+	
+	this.place = function() {
+		this.active = arguments.callee.task.iterations / (this.repeats);	
+	}
+	
+	this.drop = function() {
+		this.active = 1 - arguments.callee.task.iterations / (this.repeats);
+	}
+		
+	this.trigTask = new Task(this.animate, this);
+	this.placeTask = new Task(this.place, this);
+	this.dropTask = new Task(this.drop, this);
+	
+	this.trig = function() {
+		if (this.phase == 0) {
+			this.busy = true;
+			this.trigTask.interval = this.interval;
+			this.trigTask.repeat(this.repeats);
+			this.trigTask.execute();
+		}
+	}
+	
+	this.place = function() {
+		if (this.active == 0) {
+			this.placeTask.interval = this.interval;
+			this.placeTask.repeat(this.repeats);
+			this.placeTask.execute();
+		}
+	}
+	
+	this.drop = function() {
+		if (this.active == 1) {
+			this.dropTask.interval = this.interval;
+			this.dropTask.repeat(this.repeats);
+			this.dropTask.execute();
+		}
+	}
+	
+	this.paint = function(x, y) {
+		with (mgraphics) {
+			if (this.active) {
+				arc(x, y, 6 * ease_in_out_cubic(this.active) + ease_in_out_cubic(this.phase) * 2, 0, TWO_PI);
+				fill();
+			}
+		}	
+	}
+}
+
 var EuclideanCircle = function(id, coords, radius, length, density, offset) {
 	this.id = id;
 	this.coords = coords;
 	this.radius = radius;
-	
+
 	this.length = length;
 	this.density = density;
 	this.offset = offset;
+
 	this.hover = false;
+	this.repeats = 25;
+	this.interval = 4;
+	this.fade = 0;
+
+	this.trigger = false;
+	this.combo = false;
+	
+	this.animateHoverIn = function() {
+		this.fade = arguments.callee.task.iterations / (this.repeats);				
+	}
+	
+	this.animateHoverOut = function() {
+		this.fade = 1 - arguments.callee.task.iterations / (this.repeats);
+		
+		if (this.fade <= 0) {
+			this.fade = 0;
+			arguments.callee.task.cancel();
+		}	
+	}
+	
+	this.fadeInTask = new Task(this.animateHoverIn, this);
+	this.fadeOutTask = new Task(this.animateHoverOut, this);
 	
 	this.setValue = function(x, y) {		
-		//this.offset = clamp(this.offset - x, 0, 1);
+		this.offset = clamp(this.offset - x, 0, 1);
 		this.length = clamp(this.length - x, 0, 1);
 		this.density = clamp(this.density - y, 0, 1);	
 	}
+	
+	var steps = [
+		new Step(), new Step(), new Step(), new Step(), 
+		new Step(), new Step(), new Step(), new Step(), 
+		new Step(), new Step(), new Step(), new Step(), 
+		new Step(), new Step(), new Step(), new Step()
+	];
+	
+	this.update = function() {
+		var length = Math.round(this.length * 16);
+		var density = Math.round(this.density * length);
+		var offset = Math.round(this.offset * length);
+																			
+		for (var i = 0; i < length; ++i) {				
+			var step = ((i + length) - offset) * density;
+
+			if (step % length < density) {					
+				steps[i].place();
+					
+				if (timeline % length == i) {
+					steps[i].trig();
+				}									
+			} else {
+				steps[i].drop();
+			}												
+		}
+	}
 
 	this.paint = function(color) {
-		with (mgraphics) {						
-			set_source_rgba(hoverEuclid == this.id ? hoverColor : color);
-			set_line_width(hoverEuclid == this.id ? 2 : 2);
+		with (mgraphics) {
+			set_line_width(2);
+			colorMix(color, hoverColor, ease_in_out_cubic(this.fade));								
 			
 			arc(this.coords[0], this.coords[1], this.radius, 0, TWO_PI);
 			stroke();
@@ -62,24 +172,25 @@ var EuclideanCircle = function(id, coords, radius, length, density, offset) {
 			set_source_rgba(highColor);
 				
 			var length = Math.round(this.length * 16);
-			var density = Math.round(this.density * length);
-			var offset = Math.round(this.offset * length);
 																			
 			for (var i = 0; i < length; ++i) {				
 				var pos = [
-					Math.sin(i / length * TWO_PI + Math.PI) * radius - 6,
-					Math.cos(i / length * TWO_PI + Math.PI) * radius - 6
+					Math.sin(i / length * TWO_PI + Math.PI) * radius,
+					Math.cos(i / length * TWO_PI + Math.PI) * radius
 				];								
-				
-				var step = ((i + length) - offset) * density;
-				
-				if (step % length < density) {
-					ellipse(this.coords[0] + pos[0], this.coords[1] + pos[1], 12, 12);
-					fill();
-				}
+						
+				steps[i].paint(this.coords[0] + pos[0], this.coords[1] + pos[1]);
 			}
 		}
 	}
+	
+	this.hoverIn = function() {
+		if (this.fade == 0 && hoverEuclid == this.id) {
+			this.fadeInTask.interval = this.interval;
+			this.fadeInTask.repeat(this.repeats);
+			this.fadeInTask.execute();
+		}
+	}	
 	
 	this.onidle = function(x, y) {
 		if (
@@ -87,173 +198,26 @@ var EuclideanCircle = function(id, coords, radius, length, density, offset) {
 			x < this.coords[0] + this.radius + 5 && 
 			y > this.coords[1] - this.radius - 5 && 
 			y < this.coords[1] + this.radius + 5
-		) {
-			hoverEuclid = this.id;
+		) {						
+			hoverEuclid = this.id;			
 		} else if (x > 145 || x < 45 || y < 45 || y > 145) {
 			hoverEuclid = 0;
 		}
 	}
-}
-
-var Spring = function(coords, tension) {
-	this.coords = coords;
-	this.tension = tension;
 	
-	this.setValue = function(x) {
-		this.tension = clamp(this.tension - x, 0.35, 1);
-	}
-	
-	this.getValue = function() {
-		return this.tension;
-	}
-	
-	this.onidle = function(x, y) {
-		if (
-			x > this.coords[0] - 5 && 
-			x < this.coords[0] + 28 && 
-			y > this.coords[1] - 20 && 
-			y < this.coords[1] + 75
-		) {
-			hoverSpring = 1;
-		} else {
-			hoverSpring = 0;
+	this.idleout = function() {
+		if (this.fade == 1) {
+			this.fadeOutTask.interval = this.interval;
+			this.fadeOutTask.repeat(this.repeats);
+			this.fadeOutTask.execute();
 		}
 	}
 	
-	this.paint = function() {
-		with (mgraphics) {
-			var heightOffset = (1 - this.tension) * 20;
-			var topOffset = (1 - this.tension) * 30;
-			
-			set_source_rgba(lowColor);			
-			ellipse(
-				this.coords[0] + 8, 
-				this.coords[1] - 20,
-				10, 10
-			);
-			stroke();
-						
-			ellipse(
-				this.coords[0] + 8, 
-				this.coords[1] + 60, 
-				10, 10
-			);
-			stroke();
-			
-			set_line_cap("round");			
-			
-			curve(
-				this.coords[0], 
-				this.coords[1] - 5 + topOffset, 
-				this.tension, 
-				0
-			);			
-										
-			for (var i = 0; i < 4; ++i) {
-				curve(
-					this.coords[0], 
-					this.coords[1] + 5 + i * (10 * this.tension) + heightOffset, 
-					this.tension, 
-					1
-				);
-			}
-			
-			for (var i = 0; i < 4; ++i) {
-				curve(
-					this.coords[0], 
-					this.coords[1] + 5 + i * (10 * this.tension) + heightOffset, 
-					this.tension, 
-					2
-				);
-			}
-						
-			curve(
-				this.coords[0], 
-				this.coords[1] + 45 - heightOffset, 
-				this.tension, 
-				3
-			);
-						
-			set_source_rgba(highColor);
-			rectangle_rounded(
-				this.coords[0] + 7, 
-				this.coords[1] - 21 + topOffset, 
-				12, 12, 4, 4
-			);
-			fill();
-						
-			rectangle_rounded(
-				this.coords[0] + 7, 
-				this.coords[1] + 59 - topOffset, 
-				12, 12, 4, 4
-			);
-			fill();									
-		}
-	}
-	
-	function curve(x, y, height, piece) {
-		with (mgraphics) {
-			switch (piece) {
-				case 0:
-					move_to(x + 1, y + 10 * height)
-					curve_to(
-						x + 1, y + 4 * height,
-						x + 6, y + 1 * height,
-						x + 13, y + 1 * height
-					);
-					rel_line_to(0, -7);
-					
-					set_source_rgba(hoverSpring ? hoverColor : midColor);
-					stroke();
-					break;
-				
-				case 1:
-					move_to(x + 1, y + 10 * height);
-					curve_to(
-						x + 1, y + 5 * height,
-						x + 6, y + 1 * height,
-						x + 14.5, y + 1 * height
-					);
-					curve_to(
-						x + 17.75, y + 1 * height,
-						x + 22, y + 2.25 * height,
-						x + 22, y + 5 * height
-					);
-					
-					set_source_rgba(hoverSpring ? hoverColor : lowColor);
-					stroke();
-					break;
-					
-				case 2:
-					move_to(x + 1, y)
-					curve_to(
-						x + 1, y + 5 * height,
-						x + 6, y + 9 * height,
-						x + 14.5, y + 9 * height
-					);
-					curve_to(
-						x + 17.75, y + 9 * height,
-						x + 22, y + 7.75 * height,
-						x + 22, y + 5 * height
-					);
-					
-					set_source_rgba(hoverSpring ? hoverColor : midColor);
-					stroke();
-					break;
-					
-				case 3:
-					move_to(x + 1, y);
-					curve_to(
-						x + 1, y + 6 * height,
-						x + 6, y + 9 * height,
-						x + 13, y + 9 * height
-					);
-					rel_line_to(0, 7);
-					
-					set_source_rgba(hoverSpring ? hoverColor : midColor);
-					stroke();
-					break;
-			}
+	this.onidleout = function() {
+		if (this.fade > 0) {
+			this.fadeOutTask.interval = this.interval;
+			this.fadeOutTask.repeat(this.repeats);
+			this.fadeOutTask.execute();
 		}
 	}
 }
@@ -262,6 +226,26 @@ var Lines = function(coords, move, skew) {
 	this.coords = coords;
 	this.move = move;
 	this.skew = skew;
+	
+	this.repeatsHover = 25;
+	this.intervalHover = 4;
+	this.fade = 0;
+	
+	this.animateHoverIn = function() {
+		this.fade = arguments.callee.task.iterations / (this.repeatsHover);		
+	}
+	
+	this.animateHoverOut = function() {
+		this.fade = 1 - arguments.callee.task.iterations / (this.repeatsHover);
+		
+		if (this.fade <= 0) {
+			this.fade = 0;
+			arguments.callee.task.cancel();
+		}	
+	}
+	
+	this.hoverInTask = new Task(this.animateHoverIn, this);
+	this.hoverOutTask = new Task(this.animateHoverOut, this);
 	
 	this.setValue = function(x, y) {
 		this.move = clamp(this.move - y, 0, 1);
@@ -283,9 +267,9 @@ var Lines = function(coords, move, skew) {
 				if (i == 0) {
 					set_source_rgba(highColor);
 				} else if (i < 3) {
-					set_source_rgba(hoverLines ? hoverColor : midColor);
+					colorMix(midColor, hoverColor, ease_in_out_cubic(this.fade));
 				} else {
-					set_source_rgba(hoverLines ? hoverColor : lowColor);
+					colorMix(lowColor, hoverColor, ease_in_out_cubic(this.fade));
 				}
 				
 				move_to(this.coords[0], this.coords[1] + 1 + i * 11)
@@ -304,8 +288,28 @@ var Lines = function(coords, move, skew) {
 			y < this.coords[1] + 75
 		) {
 			hoverLines = 1;
+			
+			if (this.fade == 0) {
+				this.hoverInTask.interval = this.intervalHover;
+				this.hoverInTask.repeat(this.repeatsHover);
+				this.hoverInTask.execute();
+			}			
 		} else {
 			hoverLines = 0;
+			
+			if (this.fade == 1) {
+				this.hoverOutTask.interval = this.intervalHover;
+				this.hoverOutTask.repeat(this.repeatsHover);
+				this.hoverOutTask.execute();
+			}
+		}
+	}
+	
+	this.idleout = function() {
+		if (this.fade > 0) {
+			this.hoverOutTask.interval = this.intervalHover;
+			this.hoverOutTask.repeat(this.repeatsHover);
+			this.hoverOutTask.execute();
 		}
 	}
 }
@@ -319,9 +323,29 @@ var Vertex = function(x, y, z) {
 var Cube = function(coords, rx, ry) {
 	this.coords = coords;
 	this.rx = rx;
-	this.ry = ry;		
+	this.ry = ry;
 	
-    var size = 30;	
+	this.repeatsHover = 25;
+	this.intervalHover = 4;
+	this.fade = 0;
+	
+	this.animateHoverIn = function() {
+		this.fade = arguments.callee.task.iterations / (this.repeatsHover);		
+	}
+	
+	this.animateHoverOut = function() {
+		this.fade = 1 - arguments.callee.task.iterations / (this.repeatsHover);	
+		
+		if (this.fade <= 0) {
+			this.fade = 0;
+			arguments.callee.task.cancel();
+		}
+	}
+	
+	this.hoverInTask = new Task(this.animateHoverIn, this);
+	this.hoverOutTask = new Task(this.animateHoverOut, this);	
+	
+    var size = 30;
 
     var vertices = [
         new Vertex(this.coords[0] - size, this.coords[1] - size, -size),
@@ -342,14 +366,34 @@ var Cube = function(coords, rx, ry) {
 	
 	this.onidle = function(x, y) {
 		if (
-			x > this.coords[0] - 5 && 
-			x < this.coords[0] + 78 && 
-			y > this.coords[1] - 20 && 
-			y < this.coords[1] + 75
+			x > this.coords[0] - size * 2 && 
+			x < this.coords[0] + size * 2 && 
+			y > this.coords[1] - size * 2 && 
+			y < this.coords[1] + size * 2
 		) {
 			hoverCube = 1;
+			
+			if (this.fade == 0) {
+				this.hoverInTask.interval = this.intervalHover;
+				this.hoverInTask.repeat(this.repeatsHover);
+				this.hoverInTask.execute();
+			}
 		} else {
 			hoverCube = 0;
+			
+			if (this.fade == 1) {
+				this.hoverOutTask.interval = this.intervalHover;
+				this.hoverOutTask.repeat(this.repeatsHover);
+				this.hoverOutTask.execute();
+			}
+		}
+	}
+	
+	this.idleout = function() {
+		if (this.fade > 0) {
+			this.hoverOutTask.interval = this.intervalHover;
+			this.hoverOutTask.repeat(this.repeatsHover);
+			this.hoverOutTask.execute();
 		}
 	}
 	
@@ -432,9 +476,9 @@ var Cube = function(coords, rx, ry) {
 				var edge = edges[i];
 
 				if (i < 4) {
-					set_source_rgba(hoverCube ? hoverColor : lowColor);
+					colorMix(lowColor, hoverColor, ease_in_out_cubic(this.fade));
 				} else if (i < 8) {
-					set_source_rgba(hoverCube ? hoverColor : midColor);
+					colorMix(midColor, hoverColor, ease_in_out_cubic(this.fade));
 				} else {
 					set_source_rgba(highColor);
 				}
@@ -447,13 +491,230 @@ var Cube = function(coords, rx, ry) {
 	}
 }
 
-var euclidOuter = new EuclideanCircle(1, [96, 96], 45, 1, 0.2, 0.1);
+var Spring = function(coords, tension) {
+	this.coords = coords;
+	this.tension = tension;
+	
+	this.repeatsHover = 25;
+	this.intervalHover = 4;
+	this.fade = 0;
+	
+	this.animateHoverIn = function() {
+		this.fade = arguments.callee.task.iterations / (this.repeatsHover);		
+	}
+	
+	this.animateHoverOut = function() {
+		this.fade = 1 - arguments.callee.task.iterations / (this.repeatsHover);	
+		
+		if (this.fade <= 0) {
+			this.fade = 0;
+			arguments.callee.task.cancel();
+		}	
+	}
+	
+	this.hoverInTask = new Task(this.animateHoverIn, this);
+	this.hoverOutTask = new Task(this.animateHoverOut, this);
+	
+	this.setValue = function(x) {
+		this.tension = clamp(this.tension - x, 0.35, 1);
+	}
+	
+	this.getValue = function() {
+		return this.tension;
+	}
+	
+	this.onidle = function(x, y) {
+		if (
+			x > this.coords[0] - 5 && 
+			x < this.coords[0] + 28 && 
+			y > this.coords[1] - 20 && 
+			y < this.coords[1] + 75
+		) {
+			hoverSpring = 1;
+			
+			if (this.fade == 0) {
+				this.hoverInTask.interval = this.intervalHover;
+				this.hoverInTask.repeat(this.repeatsHover);
+				this.hoverInTask.execute();
+			}
+		} else {
+			hoverSpring = 0;
+			
+			if (this.fade == 1) {
+				this.hoverOutTask.interval = this.intervalHover;
+				this.hoverOutTask.repeat(this.repeatsHover);
+				this.hoverOutTask.execute();
+			}
+		}
+	}
+	
+	this.idleout = function() {
+		if (this.fade > 0) {
+			this.hoverOutTask.interval = this.intervalHover;
+			this.hoverOutTask.repeat(this.repeatsHover);
+			this.hoverOutTask.execute();
+		}
+	}
+	
+	this.paint = function() {
+		with (mgraphics) {
+			var heightOffset = (1 - this.tension) * 20;
+			var topOffset = (1 - this.tension) * 30;
+			
+			set_source_rgba(lowColor);			
+			ellipse(
+				this.coords[0] + 8, 
+				this.coords[1] - 20,
+				10, 10
+			);
+			stroke();
+						
+			ellipse(
+				this.coords[0] + 8, 
+				this.coords[1] + 60, 
+				10, 10
+			);
+			stroke();
+			
+			set_line_cap("round");			
+			
+			curve(
+				this.coords[0], 
+				this.coords[1] - 5 + topOffset, 
+				this.tension, 
+				0,
+				this.fade
+			);			
+										
+			for (var i = 0; i < 4; ++i) {
+				curve(
+					this.coords[0], 
+					this.coords[1] + 5 + i * (10 * this.tension) + heightOffset, 
+					this.tension, 
+					1,
+					this.fade
+				);
+			}
+			
+			for (var i = 0; i < 4; ++i) {
+				curve(
+					this.coords[0], 
+					this.coords[1] + 5 + i * (10 * this.tension) + heightOffset, 
+					this.tension, 
+					2,
+					this.fade
+				);
+			}
+						
+			curve(
+				this.coords[0], 
+				this.coords[1] + 45 - heightOffset, 
+				this.tension, 
+				3,
+				this.fade
+			);
+						
+			set_source_rgba(highColor);
+			rectangle_rounded(
+				this.coords[0] + 7, 
+				this.coords[1] - 21 + topOffset, 
+				12, 12, 4, 4
+			);
+			fill();
+						
+			rectangle_rounded(
+				this.coords[0] + 7, 
+				this.coords[1] + 59 - topOffset, 
+				12, 12, 4, 4
+			);
+			fill();									
+		}
+	}
+	
+	function curve(x, y, height, piece, hover) {
+		with (mgraphics) {
+			switch (piece) {
+				case 0:
+					move_to(x + 1, y + 10 * height)
+					curve_to(
+						x + 1, y + 4 * height,
+						x + 6, y + 1 * height,
+						x + 13, y + 1 * height
+					);
+					rel_line_to(0, -7);
+					
+					colorMix(midColor, hoverColor, ease_in_out_cubic(hover));
+					stroke();
+					break;
+				
+				case 1:
+					move_to(x + 1, y + 10 * height);
+					curve_to(
+						x + 1, y + 5 * height,
+						x + 6, y + 1 * height,
+						x + 14.5, y + 1 * height
+					);
+					curve_to(
+						x + 17.75, y + 1 * height,
+						x + 22, y + 2.25 * height,
+						x + 22, y + 5 * height
+					);
+					
+					colorMix(lowColor, hoverColor, ease_in_out_cubic(hover));
+					stroke();
+					break;
+					
+				case 2:
+					move_to(x + 1, y)
+					curve_to(
+						x + 1, y + 5 * height,
+						x + 6, y + 9 * height,
+						x + 14.5, y + 9 * height
+					);
+					curve_to(
+						x + 17.75, y + 9 * height,
+						x + 22, y + 7.75 * height,
+						x + 22, y + 5 * height
+					);
+					
+					colorMix(midColor, hoverColor, ease_in_out_cubic(hover));
+					stroke();
+					break;
+					
+				case 3:
+					move_to(x + 1, y);
+					curve_to(
+						x + 1, y + 6 * height,
+						x + 6, y + 9 * height,
+						x + 13, y + 9 * height
+					);
+					rel_line_to(0, 7);
+					
+					colorMix(midColor, hoverColor, ease_in_out_cubic(hover));
+					stroke();
+					break;
+			}
+		}
+	}
+}
+
+var euclidOuter = new EuclideanCircle(1, [96, 96], 45, 1, 0.2, 0);
 var euclidInner = new EuclideanCircle(2, [96, 96], 25, 1, 0.4, 0);
 var lines = new Lines([190, 71], 0.75, 0.75);
 var cube = new Cube([350, 95], 1, 1);
 var spring = new Spring([440, 71], 1);
 
 cube.rotate(-45, 45, 0);
+
+var timeline = 0;
+
+function msg_float(x) {
+	timeline = x;
+	
+	euclidOuter.update();
+	euclidInner.update();
+	mgraphics.redraw();
+}
 
 function paint() {
 	with (mgraphics) {
@@ -468,15 +729,38 @@ function paint() {
 		cube.paint();
 		
 		outlet(0, "d0", euclidOuter.density);
+		outlet(0, "o0", euclidOuter.offset);
 		outlet(0, "l0", euclidOuter.length);		
 		outlet(0, "d1", euclidInner.density);
+		outlet(0, "o1", euclidInner.offset);
 		outlet(0, "l1", euclidInner.length);
+		
+		set_source_rgba(lowColor);
+		c74(486, 171);		
 	}
 }
 
 function onidle(x, y) {
 	euclidOuter.onidle(x, y);
 	euclidInner.onidle(x, y);
+	
+	switch (hoverEuclid) {
+		case 0:
+			euclidOuter.idleout();
+			euclidInner.idleout();
+			break;
+		
+		case 1:
+			euclidInner.idleout();
+			euclidOuter.hoverIn();
+			break;
+		
+		case 2:
+			euclidOuter.idleout();
+			euclidInner.hoverIn();
+			break;
+	}
+	
 	spring.onidle(x, y);
 	lines.onidle(x, y);
 	cube.onidle(x, y);
@@ -489,6 +773,13 @@ function onidleout() {
 	hoverSpring = 0;
 	hoverLines = 0;
 	hoverCube = 0;
+	
+	euclidOuter.onidleout();
+	euclidInner.onidleout();
+	cube.idleout();
+	spring.idleout();
+	lines.idleout();
+	
 	mgraphics.redraw();
 }
 
@@ -546,4 +837,100 @@ function ondrag(x, y, but) {
 
 function clamp(x, low, high) {
 	return Math.min(Math.max(x, low), high);
+}
+
+function c74(x, y) {
+	with (mgraphics) {
+		move_to(x, y);
+		curve_to(
+			x + 3, y,
+			x + 5, y + 2,
+			x + 5, y + 5
+		);
+		line_to(x + 5, y + 9);
+		curve_to(
+			x + 2, y + 9,
+			x, y + 7,
+			x, y + 4
+		);
+		close_path();
+		fill();
+		
+		move_to(x + 5, y);
+		line_to(x + 11, y);
+		curve_to(
+			x + 14, y,
+			x + 16, y + 2,
+			x + 16, y + 5
+		);
+		line_to(x + 10, y + 5);
+		curve_to(
+			x + 7, y + 5,
+			x + 5, y + 3,
+			x + 5, y
+		);
+		fill();
+		
+		move_to(x + 11, y + 6);
+		line_to(x + 11, y + 15);
+		curve_to(
+			x + 14, y + 15,
+			x + 16, y + 13,
+			x + 16, y + 10
+		);
+		line_to(x + 16, y + 6);
+		close_path();
+		fill();
+		
+		move_to(x + 17, y);
+		line_to(x + 17, y + 9);
+		line_to(x + 22, y + 9);
+		line_to(x + 22, y + 5);
+		curve_to(
+			x + 22, y + 2,
+			x + 20, y,
+			x + 17, y
+		);
+		fill();
+		
+		move_to(x + 28, y);
+		curve_to(
+			x + 25, y,
+			x + 23, y + 2,
+			x + 23, y + 5
+		);
+		line_to(x + 23, y + 15);
+		curve_to(
+			x + 26, y + 15,
+			x + 28, y + 13,
+			x + 28, y + 10
+		);
+		close_path()
+		fill();
+	}
+}
+
+function colorMix(colorA, colorB, mix) {
+	mgraphics.set_source_rgba(
+		lerp(colorA[0], colorB[0], mix),
+		lerp(colorA[1], colorB[1], mix),
+		lerp(colorA[2], colorB[2], mix),
+		lerp(colorA[3], colorB[3], mix)
+	);
+}
+
+function lerp(x, y, a) {
+	return x + a * (y - x);
+}
+
+function ease_in_cubic(t) {
+	return t * t * t;
+}
+
+function ease_out_cubic(t) {
+	return (--t) * t * t + 1;
+}
+
+function ease_in_out_cubic(t) {
+	return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
 }
