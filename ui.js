@@ -20,17 +20,34 @@ function bang() {
 }
 
 var timeTask = new Task(timescale, this);
+var playhead = new Buffer("playhead");
+var gen = this.patcher.getnamed("dsp");
 
 timeTask.interval = 30;
 timeTask.repeat();
 timeTask.execute();
 
+var framerate = 0;
+var deltaTime = 0;
+var timeline = 0;
+var deltaTimeline = 0;
+
 function timescale() {
-	timePhase += 0.001;
+	deltaTime = framerate;
+	deltaTimeline = timeline;
+	timeline = playhead.peek(0, 0);
 	
-	if (timePhase >= 1) {
-		timePhase -= 1;
+	deltaTimeline = timeline - deltaTimeline;
+	
+	if (deltaTimeline > 0) {
+		update_state();		
 	}
+	
+	framerate += 0.01;
+	if (framerate >= 1) {
+		framerate = 0;
+	}	
+	deltaTime = framerate - deltaTime;
 	
 	cube.rotate(0.0011, -0.0037, 0.0023);
 	refresh();
@@ -494,6 +511,8 @@ var Cube = function(coords, rx, ry) {
 var Spring = function(coords, tension) {
 	this.coords = coords;
 	this.tension = tension;
+	this.prev = this.tension;
+	this.nextValue = 0;
 	
 	this.repeatsHover = 25;
 	this.intervalHover = 4;
@@ -516,11 +535,7 @@ var Spring = function(coords, tension) {
 	this.hoverOutTask = new Task(this.animateHoverOut, this);
 	
 	this.setValue = function(x) {
-		this.tension = clamp(this.tension - x, 0.35, 1);
-	}
-	
-	this.getValue = function() {
-		return this.tension;
+		this.tension = clamp(this.tension - x, 0.35, 1);				
 	}
 	
 	this.onidle = function(x, y) {
@@ -708,12 +723,20 @@ cube.rotate(-45, 45, 0);
 
 var timeline = 0;
 
+function update_state() {
+	euclidOuter.update();
+	euclidInner.update();
+	mgraphics.redraw();
+}
+
 function msg_float(x) {
+	/*
 	timeline = x;
 	
 	euclidOuter.update();
 	euclidInner.update();
 	mgraphics.redraw();
+	*/
 }
 
 function paint() {
@@ -728,14 +751,15 @@ function paint() {
 		lines.paint();	
 		cube.paint();
 		
-		outlet(0, "d0", euclidOuter.density);
-		outlet(0, "o0", euclidOuter.offset);
-		outlet(0, "l0", euclidOuter.length);		
-		outlet(0, "d1", euclidInner.density);
-		outlet(0, "o1", euclidInner.offset);
-		outlet(0, "l1", euclidInner.length);
-		
+		gen.message("d0", euclidOuter.density);
+		gen.message("o0", euclidOuter.offset);
+		gen.message("l0", euclidOuter.length);
+		gen.message("d1", euclidInner.density);
+		gen.message("o1", euclidInner.offset);
+		gen.message("l1", euclidInner.length);
+
 		set_source_rgba(lowColor);
+		ess(456, 171);
 		c74(486, 171);		
 	}
 }
@@ -839,7 +863,85 @@ function clamp(x, low, high) {
 	return Math.min(Math.max(x, low), high);
 }
 
-function c74(x, y) {
+function ess(x, y) {
+	with (mgraphics) {
+		move_to(x, y);
+		line_to(x + 11, y);
+		line_to(x + 11, y + 1);
+		curve_to(
+			x + 5, y + 2.5,
+			x + 1, y + 5,
+			x + 1, y + 9
+		);
+		curve_to(
+			x + 1, y + 11.75,
+			x + 3.5, y + 13.75,
+			x + 6.5, y + 12.75
+		);
+		curve_to(
+			x + 9.5, y + 11.75,
+			x + 12.5, y + 5.5,
+			x + 12.5, y + 5.5
+		);
+		curve_to(
+			x + 15, y + 0.5,
+			x + 19, y,
+			x + 21.5, y
+		);
+		curve_to(
+			x + 24, y,
+			x + 28, y + 1.75,
+			x + 28, y + 6
+		);
+		curve_to(
+			x + 28, y + 9,
+			x + 26.5, y + 11,
+			x + 23.75, y + 12.5
+		);
+		line_to(x + 23.75, y + 13);
+		line_to(x + 28, y + 14);
+		line_to(x + 28, y + 15);
+		line_to(x + 17, y + 15);
+		line_to(x + 17, y + 14);
+		curve_to(
+			x + 23, y + 12.5,
+			x + 27, y + 10,
+			x + 27, y + 6
+		);
+		curve_to(
+			x + 27, y + 3.25,
+			x + 24.5, y + 1.25,
+			x + 21.5, y + 2.25
+		);
+		curve_to(
+			x + 18.5, y + 3.25,
+			x + 15.5, y + 9.5,
+			x + 15.5, y + 9.5
+		);
+		curve_to(
+			x + 13, y + 14.5,
+			x + 9, y + 15,
+			x + 6.5, y + 15
+		);
+		curve_to(
+			x + 4, y + 15,
+			x, y + 13.25,
+			x, y + 9
+		);
+		curve_to(
+			x, y + 6,
+			x + 1.5, y + 4,
+			x + 4.25, y + 2.5
+		);
+		line_to(x + 4.25, y + 2);
+		line_to(x, y + 1);
+		close_path();
+		fill();
+		
+	}
+}
+
+function c74(x, y, scale) {
 	with (mgraphics) {
 		move_to(x, y);
 		curve_to(
@@ -917,6 +1019,13 @@ function colorMix(colorA, colorB, mix) {
 		lerp(colorA[2], colorB[2], mix),
 		lerp(colorA[3], colorB[3], mix)
 	);
+}
+
+function dampingSpring(t, stiffness, mass, damp, from, to) {
+	var alpha = damp / (2 * mass);
+	var omega = Math.sqrt(stiffness / mass - Math.pow(alpha, 2));
+	
+	return from + (to - from) * (1 - Math.pow(Math.E, -1 * alpha * t)) * Math.cos(omega * t);
 }
 
 function lerp(x, y, a) {
