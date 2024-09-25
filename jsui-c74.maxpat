@@ -10,7 +10,7 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 34.0, 100.0, 795.0, 983.0 ],
+		"rect" : [ 337.0, 366.0, 646.0, 391.0 ],
 		"bglocked" : 0,
 		"openinpresentation" : 0,
 		"default_fontsize" : 12.0,
@@ -44,7 +44,7 @@
 					"maxclass" : "newobj",
 					"numinlets" : 2,
 					"numoutlets" : 0,
-					"patching_rect" : [ 135.0, 435.0, 36.0, 22.0 ],
+					"patching_rect" : [ 60.0, 328.0, 36.0, 22.0 ],
 					"text" : "dac~"
 				}
 
@@ -56,7 +56,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 2,
 					"outlettype" : [ "float", "bang" ],
-					"patching_rect" : [ 195.0, 405.0, 159.0, 22.0 ],
+					"patching_rect" : [ 120.0, 298.0, 159.0, 22.0 ],
 					"text" : "buffer~ playhead @samps 1"
 				}
 
@@ -71,7 +71,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"parameter_enable" : 0,
-					"patching_rect" : [ 135.0, 182.0, 520.0, 192.0 ]
+					"patching_rect" : [ 60.0, 60.0, 525.0, 195.0 ]
 				}
 
 			}
@@ -195,7 +195,7 @@
  ]
 					}
 ,
-					"patching_rect" : [ 135.0, 405.0, 36.0, 22.0 ],
+					"patching_rect" : [ 60.0, 298.0, 36.0, 22.0 ],
 					"text" : "gen~",
 					"varname" : "dsp"
 				}

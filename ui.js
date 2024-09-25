@@ -40,8 +40,11 @@ function timescale() {
 	deltaTimeline = timeline - deltaTimeline;
 	
 	if (deltaTimeline > 0) {
-		update_state();		
+		update_state();
 	}
+	
+	spring.updateValue();
+	cube.updateValue();
 	
 	framerate += 0.01;
 	if (framerate >= 1) {
@@ -49,7 +52,7 @@ function timescale() {
 	}	
 	deltaTime = framerate - deltaTime;
 	
-	cube.rotate(0.0011, -0.0037, 0.0023);
+	cube.rotate(cube.rotateValue[0], cube.rotateValue[1], 0);
 	refresh();
 }
 
@@ -346,6 +349,10 @@ var Cube = function(coords, rx, ry) {
 	this.intervalHover = 4;
 	this.fade = 0;
 	
+	this.prevValue = [0, 0];
+	this.nextValue = [0, 0];
+	this.rotateValue = [0, 0];
+	
 	this.animateHoverIn = function() {
 		this.fade = arguments.callee.task.iterations / (this.repeatsHover);		
 	}
@@ -445,7 +452,7 @@ var Cube = function(coords, rx, ry) {
 		}				
 	}
 	
-	this.rotate = function(rx, ry, rz) {		
+	this.rotate = function(rx, ry, rz) {						
 		for (var i = 0; i < vertices.length; ++i) {
 			var dx = vertices[i].x - this.coords[0];
 			var dy = vertices[i].y - this.coords[1];
@@ -478,7 +485,27 @@ var Cube = function(coords, rx, ry) {
 		this.rx = clamp(this.rx - rx, 0, 1);
 		this.ry = clamp(this.ry + ry, 0, 1);
 		
-		this.rotate(rx, ry, 0);
+		this.nextValue = [rx, ry];
+	}
+	
+	this.updateValue = function() {
+		//this.rotate(this.nextValue[0], this.nextValue[1], 0);
+		
+		if (Math.abs(this.nextValue[0]) > 0.01) {
+			this.prevValue[0] = this.nextValue[0];
+			this.rotateValue[0] = this.nextValue[0];
+		} else {
+			this.rotateValue[0] = this.prevValue[0];
+		}
+		
+		if (Math.abs(this.nextValue[1]) > 0.01) {
+			this.prevValue[1] = this.nextValue[1];
+			this.rotateValue[1] = this.nextValue[1];
+		} else {
+			this.rotateValue[1] = this.prevValue[1];
+		}
+		
+		this.nextValue = [this.nextValue[0] * 0.925, this.nextValue[1] * 0.925];				
 	}
 	
 	this.getValue = function() {
@@ -512,11 +539,28 @@ var Spring = function(coords, tension) {
 	this.coords = coords;
 	this.tension = tension;
 	this.prev = this.tension;
-	this.nextValue = 0;
+	this.nextValue = 0.5;
 	
 	this.repeatsHover = 25;
 	this.intervalHover = 4;
 	this.fade = 0;
+	this.velocity = 0;
+	
+	this.stepper = function(from, to, velocity, stiffness, damping) {
+		var springStep = -stiffness * (from - to);
+		var damper = -damping * velocity;
+		var a = springStep + damper;
+		var newVelocity = velocity + a * 0.1;
+		var newValue = from + newVelocity * 0.1;
+	
+		if (Math.abs(newVelocity) < 1 && Math.abs(newValue - to) < 1) {
+			this.tension = to;
+			this.velocity = 0;
+		}
+		
+		this.tension = newValue;
+		this.velocity = newVelocity;
+	}
 	
 	this.animateHoverIn = function() {
 		this.fade = arguments.callee.task.iterations / (this.repeatsHover);		
@@ -531,11 +575,17 @@ var Spring = function(coords, tension) {
 		}	
 	}
 	
+	this.updateValue = function() {
+		this.stepper(this.prev, this.nextValue, this.velocity, 50, 2.5);
+		this.prev = this.tension;
+	}
+	
 	this.hoverInTask = new Task(this.animateHoverIn, this);
 	this.hoverOutTask = new Task(this.animateHoverOut, this);
 	
 	this.setValue = function(x) {
-		this.tension = clamp(this.tension - x, 0.35, 1);				
+		this.prev = this.tension;
+		this.nextValue = clamp(this.nextValue - x, 0.35, 1);
 	}
 	
 	this.onidle = function(x, y) {
@@ -713,11 +763,11 @@ var Spring = function(coords, tension) {
 	}
 }
 
-var euclidOuter = new EuclideanCircle(1, [96, 96], 45, 1, 0.2, 0);
-var euclidInner = new EuclideanCircle(2, [96, 96], 25, 1, 0.4, 0);
-var lines = new Lines([190, 71], 0.75, 0.75);
-var cube = new Cube([350, 95], 1, 1);
-var spring = new Spring([440, 71], 1);
+var euclidOuter = new EuclideanCircle(1, [98, 98], 45, 1, 0.2, 0);
+var euclidInner = new EuclideanCircle(2, [98, 98], 25, 1, 0.4, 0);
+var lines = new Lines([190, 70], 0.75, 0.75);
+var cube = new Cube([360, 93], 1, 1);
+var spring = new Spring([444, 73], 1);
 
 cube.rotate(-45, 45, 0);
 
@@ -742,7 +792,7 @@ function msg_float(x) {
 function paint() {
 	with (mgraphics) {
 		set_source_rgba(bgColor);
-		rectangle_rounded(0, 0, 520, 192, 8, 8);
+		rectangle_rounded(0, 0, 525, 195, 8, 8);
 		fill();
 				
 		euclidOuter.paint(lowColor);
@@ -759,8 +809,8 @@ function paint() {
 		gen.message("l1", euclidInner.length);
 
 		set_source_rgba(lowColor);
-		ess(456, 171);
-		c74(486, 171);		
+		ess(491, 158);
+		c74(491, 174);		
 	}
 }
 
@@ -1021,23 +1071,8 @@ function colorMix(colorA, colorB, mix) {
 	);
 }
 
-function dampingSpring(t, stiffness, mass, damp, from, to) {
-	var alpha = damp / (2 * mass);
-	var omega = Math.sqrt(stiffness / mass - Math.pow(alpha, 2));
-	
-	return from + (to - from) * (1 - Math.pow(Math.E, -1 * alpha * t)) * Math.cos(omega * t);
-}
-
 function lerp(x, y, a) {
 	return x + a * (y - x);
-}
-
-function ease_in_cubic(t) {
-	return t * t * t;
-}
-
-function ease_out_cubic(t) {
-	return (--t) * t * t + 1;
 }
 
 function ease_in_out_cubic(t) {
