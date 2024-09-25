@@ -1,3 +1,50 @@
+/*
+MIT License
+
+Copyright (c) 2024 Ess Mattisson
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+                       -   ,--_--.
+               -           \      `.
+                      -     "-_ _   \
+     -                         / F   )
+                   -     -    / / `--'
+              -              / /
+                   -        / /
+            -            __/ /
+                        /,-pJ
+           -        _--"-L ||
+                  ,"      "//
+     -           /  ,-""".//\
+                /  /     // J____
+               J  /     // L/----\
+   .           F J     //__//^---'
+     `     ___J  F    '----| |
+  `       J---|  F         F F
+`   `. `   `--J  L        J  F
+    .   .`     L J       J  F
+       .  .    J  \    ,"  F
+         .  `.` \  "--"  ,"
+            ` ``."-____-"
+*/
+
 mgraphics.init();
 mgraphics.relative_coords = 0;
 mgraphics.autofill = 0;
@@ -27,6 +74,8 @@ var deltaTime = 0;
 var timeline = 0;
 var deltaTimeline = 0;
 
+var stepState = [false, false];
+
 function timescale() {
 	deltaTimeline = timeline;
 	
@@ -35,6 +84,9 @@ function timescale() {
 	
 	if (deltaTimeline > 0) {
 		update_state();
+		
+		stepState[0] = euclidOuter.report();
+		stepState[1] = euclidInner.report();
 	}
 	
 	lines.updateValue();
@@ -97,8 +149,25 @@ var Step = function() {
 	this.paint = function(x, y) {
 		with (mgraphics) {
 			if (this.active) {
-				arc(x, y, 5 * ease_in_out_cubic(this.active) + ease_in_out_cubic(this.phase) * 3, 0, TWO_PI);
+				arc(
+					x, 
+					y, 
+					6 * ease_in_out_cubic(this.active) + ease_in_out_cubic(this.phase) * 3, 
+					0, 
+					TWO_PI
+				);
 				fill();
+				
+				if (stepState[0] == 1 && stepState[1] == 1 && this.phase > 0) {
+					arc(
+						x, 
+						y, 
+						14 - (this.phase) * 8, 
+						0, 
+						TWO_PI
+					);
+					stroke();
+				}
 			}
 		}	
 	}
@@ -169,7 +238,17 @@ var EuclideanCircle = function(id, coords, radius, length, density, offset) {
 			}												
 		}
 	}
-
+	
+	this.report = function() {
+		var length = Math.round(this.length * 16);
+		var density = Math.round(this.density * length);
+		var offset = Math.round(this.offset * length);
+		
+		var step = ((timeline + length) - offset) * density;
+		
+		return step % length < density;
+	}
+	
 	this.paint = function(color) {
 		with (mgraphics) {
 			set_line_width(2);
@@ -278,8 +357,10 @@ var Lines = function(coords, move, skew) {
 		this.skew = lerp(this.prevValue[1], this.nextValue[1], 0.1);
 		
 		for (var i = 0; i < 6; ++i) {
-			this.lineMove[i] = lerp(this.prevValue[0], this.nextValue[0], 0.01 + i * 0.1);
-			this.lineSkew[i] = lerp(this.prevValue[1], this.nextValue[1], 0.01 + i * 0.1);
+			var speed = 0.01 + i * 0.1;
+			
+			this.lineMove[i] = lerp(this.prevValue[0], this.nextValue[0], speed);
+			this.lineSkew[i] = lerp(this.prevValue[1], this.nextValue[1], speed);
 		}
 		
 		this.prevValue = [this.move, this.skew];
@@ -291,6 +372,7 @@ var Lines = function(coords, move, skew) {
 	
 	this.paint = function() {
 		with (mgraphics) {
+			set_line_width(2);
 			set_line_cap("none");
 									
 			for (var i = 0; i < 6; ++i) {
@@ -354,6 +436,11 @@ var Vertex = function(x, y, z) {
 	}
 
 var Cube = function(coords, rx, ry) {
+	/*
+	3D cube projection based on:
+	https://youtu.be/gx_Sx5FeTAk
+	*/
+	
 	this.coords = coords;
 	this.rx = rx;
 	this.ry = ry;
@@ -382,7 +469,7 @@ var Cube = function(coords, rx, ry) {
 	this.hoverInTask = new Task(this.animateHoverIn, this);
 	this.hoverOutTask = new Task(this.animateHoverOut, this);	
 	
-    var size = 30;
+    var size = 30;	
 
     var vertices = [
         new Vertex(this.coords[0] - size, this.coords[1] - size, -size),
@@ -433,38 +520,7 @@ var Cube = function(coords, rx, ry) {
 			this.hoverOutTask.execute();
 		}
 	}
-	
-	this.vertexRotate = function(id, axis, value) {
-		switch (axis) {
-			case "x":
-				var dx = vertices[id].x - this.coords[0];
-				var dy = vertices[id].y - this.coords[1];
-				var x = dx * Math.cos(value) - dy * Math.sin(value);
-				var y = dx * Math.sin(value) + dy * Math.cos(value);
-				vertices[id].x = x + this.coords[0];
-				vertices[id].y = y + this.coords[1];
-				break;
-				
-			case "y":
-				var dy = vertices[id].y - this.coords[1];
-				var dz = vertices[id].z;
-				var y = dy * Math.cos(value) - dz * Math.sin(value);
-				var z = dy * Math.sin(value) + dz * Math.cos(value);
-				vertices[id].y = y + this.coords[1];
-				vertices[id].z = z;
-				break;
-				
-			case "z":
-				var dx = vertices[id].x - this.coords[0];
-				var dz = vertices[id].z;
-				var x = dz * Math.sin(value) + dx * Math.cos(value);
-				var z = dz * Math.cos(value) - dx * Math.sin(value);
-				vertices[id].x = x + this.coords[0];
-				vertices[id].z = z;
-				break;
-		}				
-	}
-	
+
 	this.rotate = function(rx, ry, rz) {						
 		for (var i = 0; i < vertices.length; ++i) {
 			var dx = vertices[i].x - this.coords[0];
@@ -501,9 +557,7 @@ var Cube = function(coords, rx, ry) {
 		this.nextValue = [rx, ry];
 	}
 	
-	this.updateValue = function() {
-		//this.rotate(this.nextValue[0], this.nextValue[1], 0);
-		
+	this.updateValue = function() {		
 		if (Math.abs(this.nextValue[0]) > 0.01) {
 			this.prevValue[0] = this.nextValue[0];
 			this.rotateValue[0] = this.nextValue[0];
@@ -527,6 +581,7 @@ var Cube = function(coords, rx, ry) {
 	
 	this.paint = function() {
 		with (mgraphics) {
+			set_line_width(2);
 			set_line_cap("round");
 			
 			for (var i = 0; i < edges.length; ++i) {
@@ -552,14 +607,19 @@ var Spring = function(coords, tension) {
 	this.coords = coords;
 	this.tension = tension;
 	this.prev = this.tension;
-	this.nextValue = 0.5;
+	this.nextValue = this.tension;
 	
 	this.repeatsHover = 25;
 	this.intervalHover = 4;
 	this.fade = 0;
 	this.velocity = 0;
 	
-	this.stepper = function(from, to, velocity, stiffness, damping) {
+	/* 
+	Spring easing function by Tanner Linsley:
+	https://github.com/tannerlinsley/springer
+	*/
+	
+	this.interpolateSpring = function(from, to, velocity, stiffness, damping) {
 		var springStep = -stiffness * (from - to);
 		var damper = -damping * velocity;
 		var a = springStep + damper;
@@ -570,7 +630,6 @@ var Spring = function(coords, tension) {
 			this.tension = to;
 			this.velocity = 0;
 		}
-		
 		this.tension = newValue;
 		this.velocity = newVelocity;
 	}
@@ -589,7 +648,7 @@ var Spring = function(coords, tension) {
 	}
 	
 	this.updateValue = function() {
-		this.stepper(this.prev, this.nextValue, this.velocity, 50, 2.5);
+		this.interpolateSpring(this.prev, this.nextValue, this.velocity, 50, 2.5);
 		this.prev = this.tension;
 	}
 	
@@ -636,6 +695,8 @@ var Spring = function(coords, tension) {
 	
 	this.paint = function() {
 		with (mgraphics) {
+			set_line_width(2);
+			
 			var heightOffset = (1 - this.tension) * 20;
 			var topOffset = (1 - this.tension) * 30;
 			
@@ -813,9 +874,9 @@ function paint() {
 		gen.message("o1", euclidInner.offset);
 		gen.message("l1", euclidInner.length);
 
-		set_source_rgba(lowColor);
-		ess(491, 158);
-		c74(491, 174);		
+		set_source_rgba(bgColor);
+		ess(467, 198);
+		c74(497, 198);		
 	}
 }
 
