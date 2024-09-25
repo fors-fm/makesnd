@@ -76,7 +76,7 @@ var stepState = [false, false];
 
 function timescale() {
 	deltaTimeline = timeline;
-	
+
 	timeline = playhead.peek(0, 0);	
 	deltaTimeline = timeline - deltaTimeline;
 	
@@ -86,38 +86,38 @@ function timescale() {
 		stepState[0] = euclidOuter.report();
 		stepState[1] = euclidInner.report();
 	}
-	
+
 	lines.updateValue();
-	cube.updateValue();		
+	cube.updateValue();
 	cube.rotate(cube.rotateValue[0], cube.rotateValue[1], 0);
 	spring.updateValue();
-	
+
 	refresh();
 }
 
 var Step = function() {
 	this.active = 0;
-	
+
 	this.phase = 0;
 	this.repeats = 35;
 	this.interval = 4;
-			
+
 	this.popAnimate = function() {
-		this.phase = 1 - arguments.callee.task.iterations / (this.repeats);	
+		this.phase = 1 - arguments.callee.task.iterations / (this.repeats);
 	};
-	
+
 	this.placeAnimate = function() {
-		this.active = arguments.callee.task.iterations / (this.repeats);	
+		this.active = arguments.callee.task.iterations / (this.repeats);
 	};
-	
+
 	this.dropAnimate = function() {
 		this.active = 1 - arguments.callee.task.iterations / (this.repeats);
 	};
-		
+
 	this.trigTask = new Task(this.popAnimate, this);
 	this.placeTask = new Task(this.placeAnimate, this);
 	this.dropTask = new Task(this.dropAnimate, this);
-	
+
 	this.trig = function() {
 		if (this.phase == 0) {
 			this.trigTask.interval = this.interval;
@@ -133,7 +133,7 @@ var Step = function() {
 			this.placeTask.execute();
 		}
 	};
-	
+
 	this.drop = function() {
 		if (this.active == 1) {
 			this.dropTask.interval = this.interval;
@@ -141,35 +141,35 @@ var Step = function() {
 			this.dropTask.execute();
 		}
 	};
-	
+
 	this.paint = function(x, y) {
 		with (mgraphics) {
 			if (this.active) {
 				arc(
-					x, 
-					y, 
-					6 * ease_in_out_cubic(this.active) + ease_in_out_cubic(this.phase) * 3, 
-					0, 
+					x,
+					y,
+					6 * ease_in_out_cubic(this.active) + ease_in_out_cubic(this.phase) * 3,
+					0,
 					TWO_PI
 				);
 				fill();
-				
+
 				if (stepState[0] == 1 && stepState[1] == 1 && this.phase > 0) {
 					arc(
-						x, 
-						y, 
-						14 - (this.phase) * 8, 
-						0, 
+						x,
+						y,
+						14 - (this.phase) * 8,
+						0,
 						TWO_PI
 					);
 					stroke();
 				}
 			}
-		}	
+		}
 	};
 };
 
-var EuclideanCircle = function(id, coords, radius, length, density, offset) {
+var Circle = function(id, coords, radius, length, density, offset) {
 	this.id = id;
 	this.coords = coords;
 	this.radius = radius;
@@ -178,57 +178,57 @@ var EuclideanCircle = function(id, coords, radius, length, density, offset) {
 	this.density = density;
 	this.offset = offset;
 	this.hover = false;
-	
+
 	this.repeats = 25;
 	this.interval = 4;
 	this.fade = 0;
-		
+
 	this.animateHoverIn = function() {
-		this.fade = arguments.callee.task.iterations / (this.repeats);				
+		this.fade = arguments.callee.task.iterations / (this.repeats);
 	};
-	
+
 	this.animateHoverOut = function() {
 		this.fade = 1 - arguments.callee.task.iterations / (this.repeats);
 		
 		if (this.fade <= 0) {
 			this.fade = 0;
 			arguments.callee.task.cancel();
-		}	
+		}
 	};
-	
+
 	this.fadeInTask = new Task(this.animateHoverIn, this);
 	this.fadeOutTask = new Task(this.animateHoverOut, this);
-	
-	this.setValue = function(x, y) {		
+
+	this.setValue = function(x, y) {
 		this.offset = clamp(this.offset - x, 0, 1);
 		this.length = clamp(this.length - x, 0, 1);
-		this.density = clamp(this.density - y, 0, 1);	
+		this.density = clamp(this.density - y, 0, 1);
 	};
-	
+
 	var steps = [
-		new Step(), new Step(), new Step(), new Step(), 
-		new Step(), new Step(), new Step(), new Step(), 
-		new Step(), new Step(), new Step(), new Step(), 
+		new Step(), new Step(), new Step(), new Step(),
+		new Step(), new Step(), new Step(), new Step(),
+		new Step(), new Step(), new Step(), new Step(),
 		new Step(), new Step(), new Step(), new Step()
 	];
-	
+
 	this.update = function() {
 		var length = Math.round(this.length * 16);
 		var density = Math.round(this.density * length);
 		var offset = Math.round(this.offset * length);
-																			
-		for (var i = 0; i < length; ++i) {				
+
+		for (var i = 0; i < length; ++i) {
 			var step = ((i + length) - offset) * density;
 
-			if (step % length < density) {					
+			if (step % length < density) {
 				steps[i].place();
 					
 				if (timeline % length == i) {
 					steps[i].trig();
-				}									
+				}
 			} else {
 				steps[i].drop();
-			}												
+			}
 		}
 	};
 	
@@ -236,56 +236,56 @@ var EuclideanCircle = function(id, coords, radius, length, density, offset) {
 		var length = Math.round(this.length * 16);
 		var density = Math.round(this.density * length);
 		var offset = Math.round(this.offset * length);
-		
+
 		var step = ((timeline + length) - offset) * density;
-		
+
 		return step % length < density;
 	};
-	
+
 	this.paint = function(color) {
 		with (mgraphics) {
 			set_line_width(2);
-			colorMix(color, hoverColor, ease_in_out_cubic(this.fade));								
-			
+			colorMix(color, hoverColor, ease_in_out_cubic(this.fade));
+
 			arc(this.coords[0], this.coords[1], this.radius, 0, TWO_PI);
 			stroke();
-						
+
 			set_source_rgba(highColor);
-				
+
 			var length = Math.round(this.length * 16);
-																			
-			for (var i = 0; i < length; ++i) {				
+
+			for (var i = 0; i < length; ++i) {
 				var pos = [
 					Math.sin(i / length * TWO_PI + Math.PI) * radius,
 					Math.cos(i / length * TWO_PI + Math.PI) * radius
-				];								
-						
+				];
+
 				steps[i].paint(this.coords[0] + pos[0], this.coords[1] + pos[1]);
 			}
 		}
 	};
-	
+
 	this.hoverIn = function() {
 		if (this.fade == 0 && hoverEuclid == this.id) {
 			this.fadeInTask.interval = this.interval;
 			this.fadeInTask.repeat(this.repeats);
 			this.fadeInTask.execute();
 		}
-	};	
-	
+	};
+
 	this.onidle = function(x, y) {
 		if (
 			x > this.coords[0] - this.radius - 5 && 
 			x < this.coords[0] + this.radius + 5 && 
 			y > this.coords[1] - this.radius - 5 && 
 			y < this.coords[1] + this.radius + 5
-		) {						
-			hoverEuclid = this.id;			
+		) {
+			hoverEuclid = this.id;
 		} else if (x > 145 || x < 45 || y < 45 || y > 145) {
 			hoverEuclid = 0;
 		}
 	};
-	
+
 	this.idleout = function() {
 		if (this.fade == 1) {
 			this.fadeOutTask.interval = this.interval;
@@ -293,7 +293,7 @@ var EuclideanCircle = function(id, coords, radius, length, density, offset) {
 			this.fadeOutTask.execute();
 		}
 	};
-	
+
 	this.onidleout = function() {
 		if (this.fade > 0) {
 			this.fadeOutTask.interval = this.interval;
@@ -307,74 +307,74 @@ var Lines = function(coords, move, skew) {
 	this.coords = coords;
 	this.move = move;
 	this.skew = skew;
-	
+
 	this.repeatsHover = 25;
 	this.intervalHover = 4;
 	this.fade = 0;
-	
+
 	this.prevValue = [this.move, this.skew];
 	this.nextValue = [this.move, this.skew];
-	
+
 	this.lineMove = [
 		this.move, this.move, this.move,
 		this.move, this.move, this.move
 	];
-	
+
 	this.lineSkew = [
 		this.skew, this.skew, this.skew,
 		this.skew, this.skew, this.skew
 	];
-	
+
 	this.animateHoverIn = function() {
-		this.fade = arguments.callee.task.iterations / (this.repeatsHover);		
+		this.fade = arguments.callee.task.iterations / (this.repeatsHover);
 	};
-	
+
 	this.animateHoverOut = function() {
 		this.fade = 1 - arguments.callee.task.iterations / (this.repeatsHover);
-		
+
 		if (this.fade <= 0) {
 			this.fade = 0;
 			arguments.callee.task.cancel();
-		}	
+		}
 	};
-	
+
 	this.hoverInTask = new Task(this.animateHoverIn, this);
 	this.hoverOutTask = new Task(this.animateHoverOut, this);
-	
+
 	this.setValue = function(x, y) {
 		this.nextValue = [
 			clamp(this.nextValue[0] - y, 0, 1), 
 			clamp(this.nextValue[1] + x, 0, 1)
 		];
 	};
-	
+
 	this.updateValue = function() {
 		this.move = lerp(this.prevValue[0], this.nextValue[0], 0.1);
 		this.skew = lerp(this.prevValue[1], this.nextValue[1], 0.1);
-		
+
 		for (var i = 0; i < 6; ++i) {
 			var speed = 0.01 + i * 0.1;
-			
+
 			this.lineMove[i] = lerp(this.prevValue[0], this.nextValue[0], speed);
 			this.lineSkew[i] = lerp(this.prevValue[1], this.nextValue[1], speed);
 		}
-		
+
 		this.prevValue = [this.move, this.skew];
 	};
-	
+
 	this.getValue = function() {
 		return [this.move, this.skew];
 	};
-	
+
 	this.paint = function() {
 		with (mgraphics) {
 			set_line_width(2);
 			set_line_cap("none");
-									
+
 			for (var i = 0; i < 6; ++i) {
 				var skewScaled = (this.lineSkew[i] * 2 - 1) * 20;
 				var height = (this.lineMove[i] * 2 - 1) * 20;
-				
+
 				if (i == 0) {
 					set_source_rgba(highColor);
 				} else if (i < 3) {
@@ -382,22 +382,22 @@ var Lines = function(coords, move, skew) {
 				} else {
 					colorMix(lowColor, hoverColor, ease_in_out_cubic(this.fade));
 				}
-				
+
 				move_to(
 					this.coords[0], 
 					this.coords[1] + 1 + i * 11
 				);
 				line_to(
-					this.coords[0] + 40 + skewScaled, 
+					this.coords[0] + 40 + skewScaled,
 					this.coords[1] + 1 + i * 11 - height);
 				line_to(
 					this.coords[0] + 76, 
 					this.coords[1] + 1 + i * 11);
 				stroke();
 			}
-		}		
+		}
 	};
-	
+
 	this.onidle = function(x, y) {
 		if (
 			x > this.coords[0] - 5 && 
@@ -406,15 +406,15 @@ var Lines = function(coords, move, skew) {
 			y < this.coords[1] + 75
 		) {
 			hoverLines = 1;
-			
+
 			if (this.fade == 0) {
 				this.hoverInTask.interval = this.intervalHover;
 				this.hoverInTask.repeat(this.repeatsHover);
 				this.hoverInTask.execute();
-			}			
+			}
 		} else {
 			hoverLines = 0;
-			
+
 			if (this.fade == 1) {
 				this.hoverOutTask.interval = this.intervalHover;
 				this.hoverOutTask.repeat(this.repeatsHover);
@@ -422,7 +422,7 @@ var Lines = function(coords, move, skew) {
 			}
 		}
 	};
-	
+
 	this.idleout = function() {
 		if (this.fade > 0) {
 			this.hoverOutTask.interval = this.intervalHover;
@@ -443,63 +443,63 @@ var Cube = function(coords, rx, ry) {
 	3D cube projection based on:
 	https://youtu.be/gx_Sx5FeTAk
 	*/
-	
+
 	this.coords = coords;
 	this.rx = rx;
 	this.ry = ry;
-	
+
 	this.repeatsHover = 25;
 	this.intervalHover = 4;
 	this.fade = 0;
-	
+
 	this.prevValue = [0, 0];
 	this.nextValue = [0, 0];
 	this.rotateValue = [0, 0];
-	
+
 	this.animateHoverIn = function() {
-		this.fade = arguments.callee.task.iterations / (this.repeatsHover);		
+		this.fade = arguments.callee.task.iterations / (this.repeatsHover);
 	};
-	
+
 	this.animateHoverOut = function() {
-		this.fade = 1 - arguments.callee.task.iterations / (this.repeatsHover);	
-		
+		this.fade = 1 - arguments.callee.task.iterations / (this.repeatsHover);
+
 		if (this.fade <= 0) {
 			this.fade = 0;
 			arguments.callee.task.cancel();
 		}
 	};
-	
+
 	this.hoverInTask = new Task(this.animateHoverIn, this);
-	this.hoverOutTask = new Task(this.animateHoverOut, this);	
-	
-    var size = 30;	
+	this.hoverOutTask = new Task(this.animateHoverOut, this);
 
-    var vertices = [
-        new Vertex(this.coords[0] - size, this.coords[1] - size, -size),
-        new Vertex(this.coords[0] + size, this.coords[1] - size, -size),
-        new Vertex(this.coords[0] + size, this.coords[1] + size, -size),
-        new Vertex(this.coords[0] - size, this.coords[1] + size, -size),
-        new Vertex(this.coords[0] - size * 0.2, this.coords[1] - size, size),
-        new Vertex(this.coords[0] + size * 0.2, this.coords[1] - size, size),
-        new Vertex(this.coords[0] + size * 0.2, this.coords[1] + size, size),
-        new Vertex(this.coords[0] - size * 0.2, this.coords[1] + size, size)
-    ];
+	var size = 30;
 
-    var edges = [
-        [0, 1], [1, 2], [2, 3], [3, 0],        
-        [0, 4], [1, 5], [2, 6], [3, 7],
+	var vertices = [
+		new Vertex(this.coords[0] - size, this.coords[1] - size, -size),
+		new Vertex(this.coords[0] + size, this.coords[1] - size, -size),
+		new Vertex(this.coords[0] + size, this.coords[1] + size, -size),
+		new Vertex(this.coords[0] - size, this.coords[1] + size, -size),
+		new Vertex(this.coords[0] - size * 0.2, this.coords[1] - size, size),
+		new Vertex(this.coords[0] + size * 0.2, this.coords[1] - size, size),
+		new Vertex(this.coords[0] + size * 0.2, this.coords[1] + size, size),
+		new Vertex(this.coords[0] - size * 0.2, this.coords[1] + size, size)
+	];
+
+	var edges = [
+		[0, 1], [1, 2], [2, 3], [3, 0],
+		[0, 4], [1, 5], [2, 6], [3, 7],
 		[4, 5], [5, 6], [6, 7], [7, 4]
-    ];
-	
+	];
+
 	this.onidle = function(x, y) {
 		if (
-			x > this.coords[0] - size * 2 && 
-			x < this.coords[0] + size * 2 && 
-			y > this.coords[1] - size * 2 && 
+			x > this.coords[0] - size * 2 &&
+			x < this.coords[0] + size * 2 &&
+			y > this.coords[1] - size * 2 &&
 			y < this.coords[1] + size * 2
 		) {
 			hoverCube = 1;
-			
+
 			if (this.fade == 0) {
 				this.hoverInTask.interval = this.intervalHover;
 				this.hoverInTask.repeat(this.repeatsHover);
@@ -507,7 +507,7 @@ var Cube = function(coords, rx, ry) {
 			}
 		} else {
 			hoverCube = 0;
-			
+
 			if (this.fade == 1) {
 				this.hoverOutTask.interval = this.intervalHover;
 				this.hoverOutTask.repeat(this.repeatsHover);
@@ -515,7 +515,7 @@ var Cube = function(coords, rx, ry) {
 			}
 		}
 	};
-	
+
 	this.idleout = function() {
 		if (this.fade > 0) {
 			this.hoverOutTask.interval = this.intervalHover;
@@ -524,7 +524,7 @@ var Cube = function(coords, rx, ry) {
 		}
 	};
 
-	this.rotate = function(rx, ry, rz) {						
+	this.rotate = function(rx, ry, rz) {
 		for (var i = 0; i < vertices.length; ++i) {
 			var dx = vertices[i].x - this.coords[0];
 			var dy = vertices[i].y - this.coords[1];
@@ -532,7 +532,7 @@ var Cube = function(coords, rx, ry) {
 			var y = dx * Math.sin(rx) + dy * Math.cos(rx);
 			vertices[i].x = x + this.coords[0];
 			vertices[i].y = y + this.coords[1];
-    	}
+		}
 
 		for (var i = 0; i < vertices.length; ++i) {
 			var dy = vertices[i].y - this.coords[1];
@@ -552,41 +552,41 @@ var Cube = function(coords, rx, ry) {
 			vertices[i].z = z;
 		}
 	};
-	
+
 	this.setValue = function(rx, ry) {
-		this.rx = clamp(this.rx - rx, 0, 1);
-		this.ry = clamp(this.ry + ry, 0, 1);
-		
+		this.rx = clamp(this.rx - rx / 5, 0, 1);
+		this.ry = clamp(this.ry + ry / 5, 0, 1);
+
 		this.nextValue = [rx, ry];
 	};
-	
-	this.updateValue = function() {		
+
+	this.updateValue = function() {
 		if (Math.abs(this.nextValue[0]) > 0.01) {
 			this.prevValue[0] = this.nextValue[0];
 			this.rotateValue[0] = this.nextValue[0];
 		} else {
 			this.rotateValue[0] = this.prevValue[0];
 		}
-		
+
 		if (Math.abs(this.nextValue[1]) > 0.01) {
 			this.prevValue[1] = this.nextValue[1];
 			this.rotateValue[1] = this.nextValue[1];
 		} else {
 			this.rotateValue[1] = this.prevValue[1];
 		}
-		
-		this.nextValue = [this.nextValue[0] * 0.925, this.nextValue[1] * 0.925];				
+
+		this.nextValue = [this.nextValue[0] * 0.925, this.nextValue[1] * 0.925];
 	};
-	
+
 	this.getValue = function() {
 		return [this.rx, this.ry];
 	};
-	
+
 	this.paint = function() {
 		with (mgraphics) {
 			set_line_width(2);
 			set_line_cap("round");
-			
+
 			for (var i = 0; i < edges.length; ++i) {
 				var edge = edges[i];
 
@@ -597,10 +597,10 @@ var Cube = function(coords, rx, ry) {
 				} else {
 					set_source_rgba(highColor);
 				}
-				
+
 				move_to(vertices[edge[0]].x, vertices[edge[0]].y);
-            	line_to(vertices[edge[1]].x, vertices[edge[1]].y);
-            	stroke();
+				line_to(vertices[edge[1]].x, vertices[edge[1]].y);
+				stroke();
 			}
 		}
 	};
@@ -621,14 +621,14 @@ var Spring = function(coords, tension) {
 	Spring easing function by Tanner Linsley:
 	https://github.com/tannerlinsley/springer
 	*/
-	
+
 	this.interpolateSpring = function(from, to, velocity, stiffness, damping) {
 		var springStep = -stiffness * (from - to);
 		var damper = -damping * velocity;
 		var a = springStep + damper;
 		var newVelocity = velocity + a * 0.1;
 		var newValue = from + newVelocity * 0.1;
-	
+
 		if (Math.abs(newVelocity) < 1 && Math.abs(newValue - to) < 1) {
 			this.tension = to;
 			this.velocity = 0;
@@ -636,33 +636,33 @@ var Spring = function(coords, tension) {
 		this.tension = newValue;
 		this.velocity = newVelocity;
 	};
-	
+
 	this.animateHoverIn = function() {
-		this.fade = arguments.callee.task.iterations / (this.repeatsHover);		
+		this.fade = arguments.callee.task.iterations / (this.repeatsHover);
 	};
 	
 	this.animateHoverOut = function() {
-		this.fade = 1 - arguments.callee.task.iterations / (this.repeatsHover);	
-		
+		this.fade = 1 - arguments.callee.task.iterations / (this.repeatsHover);
+
 		if (this.fade <= 0) {
 			this.fade = 0;
 			arguments.callee.task.cancel();
-		}	
+		}
 	};
-	
+
 	this.updateValue = function() {
-		this.interpolateSpring(this.prev, this.nextValue, this.velocity, 50, 2.5);
+		this.interpolateSpring(this.prev, this.nextValue * 0.65 + 0.35, this.velocity, 50, 2.5);
 		this.prev = this.tension;
 	};
-	
+
 	this.hoverInTask = new Task(this.animateHoverIn, this);
 	this.hoverOutTask = new Task(this.animateHoverOut, this);
-	
+
 	this.setValue = function(x) {
 		this.prev = this.tension;
-		this.nextValue = clamp(this.nextValue - x, 0.35, 1);
+		this.nextValue = clamp(this.nextValue - x, 0, 1);
 	};
-	
+
 	this.onidle = function(x, y) {
 		if (
 			x > this.coords[0] - 5 && 
@@ -671,7 +671,7 @@ var Spring = function(coords, tension) {
 			y < this.coords[1] + 75
 		) {
 			hoverSpring = 1;
-			
+
 			if (this.fade == 0) {
 				this.hoverInTask.interval = this.intervalHover;
 				this.hoverInTask.repeat(this.repeatsHover);
@@ -679,7 +679,7 @@ var Spring = function(coords, tension) {
 			}
 		} else {
 			hoverSpring = 0;
-			
+
 			if (this.fade == 1) {
 				this.hoverOutTask.interval = this.intervalHover;
 				this.hoverOutTask.repeat(this.repeatsHover);
@@ -687,7 +687,7 @@ var Spring = function(coords, tension) {
 			}
 		}
 	};
-	
+
 	this.idleout = function() {
 		if (this.fade > 0) {
 			this.hoverOutTask.interval = this.intervalHover;
@@ -695,7 +695,7 @@ var Spring = function(coords, tension) {
 			this.hoverOutTask.execute();
 		}
 	};
-	
+
 	this.paint = function() {
 		with (mgraphics) {
 			set_line_width(2);
@@ -703,76 +703,76 @@ var Spring = function(coords, tension) {
 			var heightOffset = (1 - this.tension) * 20;
 			var topOffset = (1 - this.tension) * 30;
 			
-			set_source_rgba(lowColor);			
+			set_source_rgba(lowColor);
 			ellipse(
-				this.coords[0] + 8, 
+				this.coords[0] + 8,
 				this.coords[1] - 20,
 				10, 10
 			);
 			stroke();
-						
+
 			ellipse(
-				this.coords[0] + 8, 
-				this.coords[1] + 60, 
+				this.coords[0] + 8,
+				this.coords[1] + 60,
 				10, 10
 			);
 			stroke();
-			
-			set_line_cap("round");			
-			
+
+			set_line_cap("round");
+
 			curve(
 				this.coords[0], 
 				this.coords[1] - 5 + topOffset, 
 				this.tension, 
 				0,
 				this.fade
-			);			
-										
+			);
+
 			for (var i = 0; i < 4; ++i) {
 				curve(
 					this.coords[0], 
-					this.coords[1] + 5 + i * (10 * this.tension) + heightOffset, 
-					this.tension, 
+					this.coords[1] + 5 + i * (10 * this.tension) + heightOffset,
+					this.tension,
 					1,
 					this.fade
 				);
 			}
-			
+
 			for (var i = 0; i < 4; ++i) {
 				curve(
 					this.coords[0], 
-					this.coords[1] + 5 + i * (10 * this.tension) + heightOffset, 
+					this.coords[1] + 5 + i * (10 * this.tension) + heightOffset,
 					this.tension, 
 					2,
 					this.fade
 				);
 			}
-						
+
 			curve(
 				this.coords[0], 
-				this.coords[1] + 45 - heightOffset, 
+				this.coords[1] + 45 - heightOffset,
 				this.tension, 
 				3,
 				this.fade
 			);
-						
+
 			set_source_rgba(highColor);
 			rectangle_rounded(
 				this.coords[0] + 7, 
-				this.coords[1] - 21 + topOffset, 
+				this.coords[1] - 21 + topOffset,
 				12, 12, 4, 4
 			);
 			fill();
 						
 			rectangle_rounded(
 				this.coords[0] + 7, 
-				this.coords[1] + 59 - topOffset, 
+				this.coords[1] + 59 - topOffset,
 				12, 12, 4, 4
 			);
-			fill();									
+			fill();
 		}
 	};
-	
+
 	function curve(x, y, height, piece, hover) {
 		with (mgraphics) {
 			switch (piece) {
@@ -784,11 +784,11 @@ var Spring = function(coords, tension) {
 						x + 13, y + 1 * height
 					);
 					rel_line_to(0, -7);
-					
+
 					colorMix(midColor, hoverColor, ease_in_out_cubic(hover));
 					stroke();
 					break;
-				
+
 				case 1:
 					move_to(x + 1, y + 10 * height);
 					curve_to(
@@ -801,11 +801,11 @@ var Spring = function(coords, tension) {
 						x + 22, y + 2.25 * height,
 						x + 22, y + 5 * height
 					);
-					
+
 					colorMix(lowColor, hoverColor, ease_in_out_cubic(hover));
 					stroke();
 					break;
-					
+
 				case 2:
 					move_to(x + 1, y);
 					curve_to(
@@ -818,11 +818,11 @@ var Spring = function(coords, tension) {
 						x + 22, y + 7.75 * height,
 						x + 22, y + 5 * height
 					);
-					
+
 					colorMix(midColor, hoverColor, ease_in_out_cubic(hover));
 					stroke();
 					break;
-					
+
 				case 3:
 					move_to(x + 1, y);
 					curve_to(
@@ -831,7 +831,7 @@ var Spring = function(coords, tension) {
 						x + 13, y + 9 * height
 					);
 					rel_line_to(0, 7);
-					
+
 					colorMix(midColor, hoverColor, ease_in_out_cubic(hover));
 					stroke();
 					break;
@@ -840,11 +840,11 @@ var Spring = function(coords, tension) {
 	}
 };
 
-var euclidOuter = new EuclideanCircle(1, [98, 98], 45, 1, 0.2, 0);
-var euclidInner = new EuclideanCircle(2, [98, 98], 25, 1, 0.4, 0);
+var euclidOuter = new Circle(1, [98, 98], 45, 1, 0.2, 0);
+var euclidInner = new Circle(2, [98, 98], 25, 1, 0.4, 0);
 var lines = new Lines([190, 70], 0.75, 0.75);
-var cube = new Cube([360, 93], 1, 1);
-var spring = new Spring([444, 73], 1);
+var cube = new Cube([360, 93], 0.5, 0.5);
+var spring = new Spring([444, 73], 0);
 
 cube.rotate(-45, 45, 0);
 
@@ -858,7 +858,7 @@ function update_state() {
 
 function paint() {
 	var gen = this.patcher.getnamed("dsp");
-	
+
 	with (mgraphics) {
 		set_source_rgba(bgColor);
 		rectangle_rounded(0, 0, 525, 195, 8, 8);
@@ -867,26 +867,34 @@ function paint() {
 		euclidOuter.paint(lowColor);
 		euclidInner.paint(midColor);
 		spring.paint();
-		lines.paint();	
+		lines.paint();
 		cube.paint();
 		
-		gen.message("d0", euclidOuter.density);
-		gen.message("o0", euclidOuter.offset);
-		gen.message("l0", euclidOuter.length);
-		gen.message("d1", euclidInner.density);
-		gen.message("o1", euclidInner.offset);
-		gen.message("l1", euclidInner.length);
+		gen.message("density_outer", euclidOuter.density);
+		gen.message("offset_outer", euclidOuter.offset);
+		gen.message("length_outer", euclidOuter.length);
+		gen.message("density_inner", euclidInner.density);
+		gen.message("offset_inner", euclidInner.offset);
+		gen.message("length_inner", euclidInner.length);
+
+		gen.message("line_move", lines.nextValue[0]);
+		gen.message("line_skew", lines.nextValue[1]);
+		
+		gen.message("cube_x", cube.rx);
+		gen.message("cube_y", cube.ry);
+				
+		gen.message("spring", spring.nextValue);
 
 		set_source_rgba(bgColor);
 		ess(467, 198);
-		c74(497, 198);		
+		c74(497, 198);
 	}
 }
 
 function onidle(x, y) {
 	euclidOuter.onidle(x, y);
 	euclidInner.onidle(x, y);
-	
+
 	switch (hoverEuclid) {
 		case 0:
 			euclidOuter.idleout();
@@ -903,11 +911,11 @@ function onidle(x, y) {
 			euclidInner.hoverIn();
 			break;
 	}
-	
+
 	spring.onidle(x, y);
 	lines.onidle(x, y);
 	cube.onidle(x, y);
-	
+
 	mgraphics.redraw();
 }
 
@@ -916,29 +924,29 @@ function onidleout() {
 	hoverSpring = 0;
 	hoverLines = 0;
 	hoverCube = 0;
-	
+
 	euclidOuter.onidleout();
 	euclidInner.onidleout();
 	cube.idleout();
 	spring.idleout();
 	lines.idleout();
-	
+
 	mgraphics.redraw();
 }
 
 var cursorClick = [0, 0];
 var cursorPrev = [0, 0];
 
-function onclick(x, y) {	
+function onclick(x, y) {
 	cursorClick = [x, y];
 	cursorPrev = [x, y];
-	
+
 	mgraphics.redraw();
 }
 
 function ondrag(x, y, but) {
 	var cursorDelta = [x - cursorPrev[0], y - cursorPrev[1]];
-	
+
 	if (!but) {
 		/*
 		TODO: mouse hiding etc ...
@@ -956,24 +964,24 @@ function ondrag(x, y, but) {
 		if (hoverEuclid == 1) {
 			euclidOuter.setValue(cursorDelta[0] / 300, cursorDelta[1] / 300);
 		}
-		
+
 		if (hoverEuclid == 2) {
 			euclidInner.setValue(cursorDelta[0] / 300, cursorDelta[1] / 300);
 		}
-		
+
 		if (hoverSpring) {
 			spring.setValue(cursorDelta[1] / 100);
 		}
-		
+
 		if (hoverLines) {
 			lines.setValue(cursorDelta[0] / 50, cursorDelta[1] / 50);
 		}
-		
+
 		if (hoverCube) {
 			cube.setValue(cursorDelta[0] / 100, cursorDelta[1] / 100);
 		}
 	}
-	
+
 	cursorPrev = [x, y];
 	mgraphics.redraw();
 }
@@ -1056,7 +1064,7 @@ function ess(x, y) {
 		line_to(x, y + 1);
 		close_path();
 		fill();
-		
+
 	}
 }
 
@@ -1076,7 +1084,7 @@ function c74(x, y, scale) {
 		);
 		close_path();
 		fill();
-		
+
 		move_to(x + 5, y);
 		line_to(x + 11, y);
 		curve_to(
@@ -1091,7 +1099,7 @@ function c74(x, y, scale) {
 			x + 5, y
 		);
 		fill();
-		
+
 		move_to(x + 11, y + 6);
 		line_to(x + 11, y + 15);
 		curve_to(
@@ -1102,7 +1110,7 @@ function c74(x, y, scale) {
 		line_to(x + 16, y + 6);
 		close_path();
 		fill();
-		
+
 		move_to(x + 17, y);
 		line_to(x + 17, y + 9);
 		line_to(x + 22, y + 9);
@@ -1113,7 +1121,7 @@ function c74(x, y, scale) {
 			x + 17, y
 		);
 		fill();
-		
+
 		move_to(x + 28, y);
 		curve_to(
 			x + 25, y,
