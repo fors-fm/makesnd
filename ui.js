@@ -15,13 +15,8 @@ var hoverLines = 0;
 var hoverCube = 0;
 var hoverSpring = 0;
 
-function bang() {
-	
-}
-
 var timeTask = new Task(timescale, this);
 var playhead = new Buffer("playhead");
-var gen = this.patcher.getnamed("dsp");
 
 timeTask.interval = 30;
 timeTask.repeat();
@@ -33,26 +28,20 @@ var timeline = 0;
 var deltaTimeline = 0;
 
 function timescale() {
-	deltaTime = framerate;
 	deltaTimeline = timeline;
-	timeline = playhead.peek(0, 0);
 	
+	timeline = playhead.peek(0, 0);	
 	deltaTimeline = timeline - deltaTimeline;
 	
 	if (deltaTimeline > 0) {
 		update_state();
 	}
 	
-	spring.updateValue();
-	cube.updateValue();
-	
-	framerate += 0.01;
-	if (framerate >= 1) {
-		framerate = 0;
-	}	
-	deltaTime = framerate - deltaTime;
-	
+	lines.updateValue();
+	cube.updateValue();		
 	cube.rotate(cube.rotateValue[0], cube.rotateValue[1], 0);
+	spring.updateValue();
+	
 	refresh();
 }
 
@@ -108,7 +97,7 @@ var Step = function() {
 	this.paint = function(x, y) {
 		with (mgraphics) {
 			if (this.active) {
-				arc(x, y, 6 * ease_in_out_cubic(this.active) + ease_in_out_cubic(this.phase) * 2, 0, TWO_PI);
+				arc(x, y, 5 * ease_in_out_cubic(this.active) + ease_in_out_cubic(this.phase) * 3, 0, TWO_PI);
 				fill();
 			}
 		}	
@@ -251,6 +240,19 @@ var Lines = function(coords, move, skew) {
 	this.intervalHover = 4;
 	this.fade = 0;
 	
+	this.prevValue = [this.move, this.skew];
+	this.nextValue = [this.move, this.skew];
+	
+	this.lineMove = [
+		this.move, this.move, this.move,
+		this.move, this.move, this.move
+	];
+	
+	this.lineSkew = [
+		this.skew, this.skew, this.skew,
+		this.skew, this.skew, this.skew
+	];
+	
 	this.animateHoverIn = function() {
 		this.fade = arguments.callee.task.iterations / (this.repeatsHover);		
 	}
@@ -268,8 +270,19 @@ var Lines = function(coords, move, skew) {
 	this.hoverOutTask = new Task(this.animateHoverOut, this);
 	
 	this.setValue = function(x, y) {
-		this.move = clamp(this.move - y, 0, 1);
-		this.skew = clamp(this.skew + x, 0, 1);
+		this.nextValue = [clamp(this.nextValue[0] - y, 0, 1), clamp(this.nextValue[1] + x, 0, 1)];
+	}
+	
+	this.updateValue = function() {
+		this.move = lerp(this.prevValue[0], this.nextValue[0], 0.1);
+		this.skew = lerp(this.prevValue[1], this.nextValue[1], 0.1);
+		
+		for (var i = 0; i < 6; ++i) {
+			this.lineMove[i] = lerp(this.prevValue[0], this.nextValue[0], 0.01 + i * 0.1);
+			this.lineSkew[i] = lerp(this.prevValue[1], this.nextValue[1], 0.01 + i * 0.1);
+		}
+		
+		this.prevValue = [this.move, this.skew];
 	}
 	
 	this.getValue = function() {
@@ -279,11 +292,11 @@ var Lines = function(coords, move, skew) {
 	this.paint = function() {
 		with (mgraphics) {
 			set_line_cap("none");
-			
-			var skewScaled = (this.skew * 2 - 1) * 20;
-			var height = (this.move * 2 - 1) * 20;
-			
+									
 			for (var i = 0; i < 6; ++i) {
+				var skewScaled = (this.lineSkew[i] * 2 - 1) * 20;
+				var height = (this.lineMove[i] * 2 - 1) * 20;
+				
 				if (i == 0) {
 					set_source_rgba(highColor);
 				} else if (i < 3) {
@@ -779,17 +792,9 @@ function update_state() {
 	mgraphics.redraw();
 }
 
-function msg_float(x) {
-	/*
-	timeline = x;
-	
-	euclidOuter.update();
-	euclidInner.update();
-	mgraphics.redraw();
-	*/
-}
-
 function paint() {
+	const gen = this.patcher.getnamed("dsp");
+	
 	with (mgraphics) {
 		set_source_rgba(bgColor);
 		rectangle_rounded(0, 0, 525, 195, 8, 8);
@@ -897,7 +902,7 @@ function ondrag(x, y, but) {
 		}
 		
 		if (hoverLines) {
-			lines.setValue(cursorDelta[0] / 100, cursorDelta[1] / 100);
+			lines.setValue(cursorDelta[0] / 50, cursorDelta[1] / 50);
 		}
 		
 		if (hoverCube) {
