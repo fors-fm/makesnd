@@ -91,6 +91,7 @@ function timescale() {
 	cube.updateValue();
 	cube.rotate(cube.rotateValue[0], cube.rotateValue[1], 0);
 	spring.updateValue();
+	//scrolltext.animate();
 
 	refresh();
 }
@@ -840,11 +841,135 @@ var Spring = function(coords, tension) {
 	}
 };
 
+var Scroller = function(coords, text) {
+	this.coords = coords;
+	this.text = text;
+	this.phase = [0, 0];
+	this.hover = false;
+	this.hoverDelta = 0;
+	this.fade = 0;
+	this.active = false;
+	
+	this.click = function() {
+		if (this.hover) {
+			this.active = !this.active;
+			
+			if (this.active) {
+				this.phase = [0, 0];
+				
+				if (this.fade == 0) {
+					this.fadeInTask.interval = this.interval;
+					this.fadeInTask.repeat(this.repeats);
+					this.fadeInTask.execute();
+				}
+			} else {
+				if (this.fade == 1) {
+					this.fadeOutTask.interval = this.interval;
+					this.fadeOutTask.repeat(this.repeats);
+					this.fadeOutTask.execute();
+				}
+			}
+		}
+	};
+			
+	this.animate = function() {
+		this.phase[0] += 0.25 / this.text.length;
+		this.phase[1] += 0.05;
+		
+		if (this.phase[0] >= 1) {
+			this.active = false;
+			this.fadeOutTask.interval = this.interval;
+			this.fadeOutTask.repeat(this.repeats);
+			this.fadeOutTask.execute();
+			this.phase[0] = 0;
+		}
+		
+		if (this.phase[1] >= 1) {
+			this.phase[1] = 0;
+		}	
+	};
+	
+	this.setFrequency = function(x) {
+		this.freq = clamp(this.freq + x, 0, 1);
+	};
+	
+	this.repeats = 25;
+	this.interval = 4;
+	
+	this.fadeIn = function() {
+		this.fade = arguments.callee.task.iterations / (this.repeats);
+	}
+	
+	this.fadeOut = function() {
+		this.fade = 1 - arguments.callee.task.iterations / (this.repeats);
+	}
+	
+	this.fadeInTask = new Task(this.fadeIn, this);
+	this.fadeOutTask = new Task(this.fadeOut, this);
+
+	this.onidle = function(x, y) {							
+		if (
+			x > this.coords[0] - 5 && 
+			x < this.coords[0] + 100 && 
+			y > this.coords[1] - 5 && 
+			y < this.coords[1] + 15
+		) {			
+			this.hover = true;			
+		} else {
+			this.hover = false;
+		}
+	};
+	
+	this.animateTask = new Task(this.animate, this);		
+
+	this.paint = function() {
+		with (mgraphics) {
+			if (this.active) {						
+				for (var i = 0; i < 12; ++i) {
+					var offset = Math.cos(this.phase[1] * TWO_PI + i * TWO_PI / 24) * 4;
+				
+					var phaseScale = this.phase[0] * (this.text.length - 11);
+					var charOffset = Math.floor(phaseScale);
+					var fade = 1
+				
+					if (i == 0) {
+						fade = 1 - phaseScale % 1;
+					}
+				
+					if (i == 11) {
+						fade = phaseScale % 1;
+					}
+				
+					set_source_rgba(bgColor[0], bgColor[1], bgColor[2], fade * this.fade);
+										
+					draw_text(
+						coords[0] + i * 7 - phaseScale % 1 * 7, 
+						coords[1] + offset, 
+						this.text.charAt(i + charOffset)
+					);
+				}
+			}
+		}
+	};
+}
+
 var euclidOuter = new Circle(1, [98, 98], 45, 1, 0.2, 0);
 var euclidInner = new Circle(2, [98, 98], 25, 1, 0.4, 0);
 var lines = new Lines([190, 70], 0.75, 0.75);
 var cube = new Cube([360, 93], 0.5, 0.5);
-var spring = new Spring([444, 73], 0);
+var spring = new Spring([451, 73], 0);
+var scrolltext = new Scroller([417, 198], 
+	"      made by ess under strict supervision by cycling '74   (not really)   " +   
+	"my love to the crew & gratz on max 9 ♥ ♥ ♥           " +
+	"greetz to mark fell & mat steel, " +
+	"the fine folks at the max discord " +
+	"and everyone out there making things that inspire. " + 
+	"               "
+);
+
+scrolltext.animateTask.interval = 30;
+scrolltext.animateTask.repeat();
+scrolltext.animateTask.execute();
 
 cube.rotate(-45, 45, 0);
 
@@ -886,8 +1011,10 @@ function paint() {
 		gen.message("spring", spring.nextValue);
 
 		set_source_rgba(bgColor);
-		ess(467, 198);
+		ess(467 - 90 * Math.pow(scrolltext.fade, 2), 198);
 		c74(497, 198);
+		
+		scrolltext.paint();
 	}
 }
 
@@ -915,6 +1042,7 @@ function onidle(x, y) {
 	spring.onidle(x, y);
 	lines.onidle(x, y);
 	cube.onidle(x, y);
+	scrolltext.onidle(x, y);
 
 	mgraphics.redraw();
 }
@@ -940,6 +1068,7 @@ var cursorPrev = [0, 0];
 function onclick(x, y) {
 	cursorClick = [x, y];
 	cursorPrev = [x, y];
+	scrolltext.click();
 
 	mgraphics.redraw();
 }
@@ -947,39 +1076,24 @@ function onclick(x, y) {
 function ondrag(x, y, but) {
 	var cursorDelta = [x - cursorPrev[0], y - cursorPrev[1]];
 
-	if (!but) {
-		/*
-		TODO: mouse hiding etc ...
-		
-		max.showcursor();
-		var p = this.patcher.wind.location;
-		var r = this.box.rect;
-		
-		max.pupdate(
-			p[0] + r[0] + cursorClick[0], 
-			p[1] + r[1] + cursorClick[1]
-		);
-		*/
-	} else {
-		if (hoverEuclid == 1) {
-			euclidOuter.setValue(cursorDelta[0] / 300, cursorDelta[1] / 300);
-		}
+	if (hoverEuclid == 1) {
+		euclidOuter.setValue(cursorDelta[0] / 300, cursorDelta[1] / 300);
+	}
 
-		if (hoverEuclid == 2) {
-			euclidInner.setValue(cursorDelta[0] / 300, cursorDelta[1] / 300);
-		}
+	if (hoverEuclid == 2) {
+		euclidInner.setValue(cursorDelta[0] / 300, cursorDelta[1] / 300);
+	}
 
-		if (hoverSpring) {
-			spring.setValue(cursorDelta[1] / 100);
-		}
+	if (hoverSpring) {
+		spring.setValue(cursorDelta[1] / 100);
+	}
 
-		if (hoverLines) {
-			lines.setValue(cursorDelta[0] / 50, cursorDelta[1] / 50);
-		}
+	if (hoverLines) {
+		lines.setValue(cursorDelta[0] / 50, cursorDelta[1] / 50);
+	}
 
-		if (hoverCube) {
-			cube.setValue(cursorDelta[0] / 100, cursorDelta[1] / 100);
-		}
+	if (hoverCube) {
+		cube.setValue(cursorDelta[0] / 100, cursorDelta[1] / 100);
 	}
 
 	cursorPrev = [x, y];
@@ -1146,6 +1260,21 @@ function colorMix(colorA, colorB, mix) {
 		lerp(colorA[2], colorB[2], mix),
 		lerp(colorA[3], colorB[3], mix)
 	);
+}
+
+function draw_text(x, y, text) {
+	with (mgraphics) {
+		select_font_face("Ableton Sans Medium");
+		set_font_size(12, 0);
+
+        var ascent = font_extents()[0];
+        var descent = font_extents()[1];
+        var height = font_extents()[2];
+        var metric = text_measure(text);
+
+		move_to(x - metric[0] / 2, y + height - descent);
+		show_text(text);
+	}
 }
 
 function lerp(x, y, a) {
