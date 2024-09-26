@@ -877,10 +877,12 @@ var Scroller = function(coords, text) {
 		this.phase[1] += 0.05;
 		
 		if (this.phase[0] >= 1) {
-			this.active = false;
-			this.fadeOutTask.interval = this.interval;
-			this.fadeOutTask.repeat(this.repeats);
-			this.fadeOutTask.execute();
+			if (this.active) {
+				this.active = false;
+				this.fadeOutTask.interval = this.interval;
+				this.fadeOutTask.repeat(this.repeats);
+				this.fadeOutTask.execute();
+			}
 			this.phase[0] = 0;
 		}
 		
@@ -962,7 +964,7 @@ var scrolltext = new Scroller([417, 198],
 	"      made by ess under strict supervision by cycling '74   (not really)   " +   
 	"my love to the crew & gratz on max 9 ♥ ♥ ♥           " +
 	"greetz to mark fell & mat steel, " +
-	"the fine folks at the max discord " +
+	"the fine folx at the max discord " +
 	"and everyone out there making things that inspire. " + 
 	"               "
 );
