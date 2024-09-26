@@ -1078,26 +1078,27 @@ function onclick(x, y) {
 function ondrag(x, y, but) {
 	var cursorDelta = [x - cursorPrev[0], y - cursorPrev[1]];
 
-	if (hoverEuclid == 1) {
-		euclidOuter.setValue(cursorDelta[0] / 300, cursorDelta[1] / 300);
-	}
+	if (but) {
+		if (hoverEuclid == 1) {
+			euclidOuter.setValue(cursorDelta[0] / 300, cursorDelta[1] / 300);
+		}
 
-	if (hoverEuclid == 2) {
-		euclidInner.setValue(cursorDelta[0] / 300, cursorDelta[1] / 300);
-	}
+		if (hoverEuclid == 2) {
+			euclidInner.setValue(cursorDelta[0] / 300, cursorDelta[1] / 300);
+		}
 
-	if (hoverSpring) {
-		spring.setValue(cursorDelta[1] / 100);
-	}
+		if (hoverSpring) {
+			spring.setValue(cursorDelta[1] / 100);
+		}
 
-	if (hoverLines) {
-		lines.setValue(cursorDelta[0] / 50, cursorDelta[1] / 50);
-	}
+		if (hoverLines) {
+			lines.setValue(cursorDelta[0] / 50, cursorDelta[1] / 50);
+		}
 
-	if (hoverCube) {
-		cube.setValue(cursorDelta[0] / 100, cursorDelta[1] / 100);
+		if (hoverCube) {
+			cube.setValue(cursorDelta[0] / 100, cursorDelta[1] / 100);
+		}
 	}
-
 	cursorPrev = [x, y];
 	mgraphics.redraw();
 }
