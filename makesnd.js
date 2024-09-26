@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2024 Ess Mattisson
+Copyright (c) 2024 Ess Mattisson (ess@fors.fm)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -55,6 +55,12 @@ var midColor = [0.643, 0.388, 1, 1];
 var lowColor = [0.220, 0.329, 0.647, 1];
 var bgColor = [0.059, 0.055, 0.075, 1];
 
+/*
+highColor = [0.695, 0.573, 0.929, 1];
+midColor = [0.247, 0.749, 0.318, 1];
+lowColor = [0.282, 0.231, 0.690, 1];
+*/
+
 var TWO_PI = Math.PI * 2;
 
 var hoverEuclid = 0;
@@ -79,10 +85,10 @@ function timescale() {
 
 	timeline = playhead.peek(0, 0);	
 	deltaTimeline = timeline - deltaTimeline;
-	
+
 	if (deltaTimeline > 0) {
 		update_state();
-		
+
 		stepState[0] = euclidOuter.report();
 		stepState[1] = euclidInner.report();
 	}
@@ -91,7 +97,6 @@ function timescale() {
 	cube.updateValue();
 	cube.rotate(cube.rotateValue[0], cube.rotateValue[1], 0);
 	spring.updateValue();
-	//scrolltext.animate();
 
 	refresh();
 }
@@ -202,7 +207,7 @@ var Circle = function(id, coords, radius, length, density, offset) {
 
 	this.setValue = function(x, y) {
 		this.offset = clamp(this.offset - x, 0, 1);
-		this.length = clamp(this.length - x, 0, 1);
+		this.length = clamp(this.length + x, 0, 1);
 		this.density = clamp(this.density - y, 0, 1);
 	};
 
@@ -214,7 +219,7 @@ var Circle = function(id, coords, radius, length, density, offset) {
 	];
 
 	this.update = function() {
-		var length = Math.round(this.length * 16);
+		var length = Math.round(this.length * 8) + 8;
 		var density = Math.round(this.density * length);
 		var offset = Math.round(this.offset * length);
 
@@ -234,7 +239,7 @@ var Circle = function(id, coords, radius, length, density, offset) {
 	};
 	
 	this.report = function() {
-		var length = Math.round(this.length * 16);
+		var length = Math.round(this.length * 8) + 8;
 		var density = Math.round(this.density * length);
 		var offset = Math.round(this.offset * length);
 
@@ -253,9 +258,9 @@ var Circle = function(id, coords, radius, length, density, offset) {
 
 			set_source_rgba(highColor);
 
-			var length = Math.round(this.length * 16);
+			var length = Math.round(this.length * 8) + 8;
 
-			for (var i = 0; i < length; ++i) {
+			for (var i = 0; i < length; i++) {
 				var pos = [
 					Math.sin(i / length * TWO_PI + Math.PI) * radius,
 					Math.cos(i / length * TWO_PI + Math.PI) * radius
@@ -555,8 +560,8 @@ var Cube = function(coords, rx, ry) {
 	};
 
 	this.setValue = function(rx, ry) {
-		this.rx = clamp(this.rx - rx / 5, 0, 1);
-		this.ry = clamp(this.ry + ry / 5, 0, 1);
+		this.rx = this.rx - rx / 5;
+		this.ry = this.ry + ry / 5;
 
 		this.nextValue = [rx, ry];
 	};
@@ -942,7 +947,7 @@ var Scroller = function(coords, text) {
 						fade = phaseScale % 1;
 					}
 				
-					set_source_rgba(bgColor[0], bgColor[1], bgColor[2], fade * this.fade);
+					set_source_rgba(lowColor[0], lowColor[1], lowColor[2], fade * this.fade);
 										
 					draw_text(
 						coords[0] + i * 7 - phaseScale % 1 * 7, 
@@ -957,14 +962,18 @@ var Scroller = function(coords, text) {
 
 var euclidOuter = new Circle(1, [98, 98], 45, 1, 0.2, 0);
 var euclidInner = new Circle(2, [98, 98], 25, 1, 0.4, 0);
-var lines = new Lines([190, 70], 0.75, 0.75);
-var cube = new Cube([360, 93], 0.5, 0.5);
+
+euclidOuter.update();
+euclidInner.update();
+
+var lines = new Lines([190, 70], 1, 0);
+var cube = new Cube([360, 93], 0, 0);
 var spring = new Spring([451, 73], 0);
-var scrolltext = new Scroller([417, 198], 
-	"      made by ess under strict supervision by cycling '74   (not really)   " +   
+var scrolltext = new Scroller([413, 176], 
+	"      made by ess under strict supervision by cycling '74   ;-)   " +   
 	"my love to the crew & gratz on max 9 ♥ ♥ ♥           " +
-	"greetz to mark fell & mat steel, " +
-	"the fine folx at the max discord " +
+	"greets to mark fell & mat steel, " +
+	"the fine folks at the max discord " +
 	"and everyone out there making things that inspire. " + 
 	"               "
 );
@@ -988,7 +997,7 @@ function paint() {
 
 	with (mgraphics) {
 		set_source_rgba(bgColor);
-		rectangle_rounded(0, 0, 525, 195, 8, 8);
+		rectangle_rounded(0, 0, 525, 195, 16, 16);
 		fill();
 				
 		euclidOuter.paint(lowColor);
@@ -1007,14 +1016,14 @@ function paint() {
 		gen.message("line_move", lines.nextValue[0]);
 		gen.message("line_skew", lines.nextValue[1]);
 		
-		gen.message("cube_x", cube.rx);
-		gen.message("cube_y", cube.ry);
+		gen.message("cube_x", cube.rx + cube.nextValue[0]);
+		gen.message("cube_y", cube.ry + cube.nextValue[1]);
 				
 		gen.message("spring", spring.nextValue);
 
-		set_source_rgba(bgColor);
-		ess(467 - 90 * Math.pow(scrolltext.fade, 2), 198);
-		c74(497, 198);
+		set_source_rgba(lowColor);
+		ess(462 - 90 * (scrolltext.fade * scrolltext.fade), 176);
+		c74(493, 176);
 		
 		scrolltext.paint();
 	}
@@ -1101,10 +1110,6 @@ function ondrag(x, y, but) {
 	}
 	cursorPrev = [x, y];
 	mgraphics.redraw();
-}
-
-function clamp(x, low, high) {
-	return Math.min(Math.max(x, low), high);
 }
 
 function ess(x, y) {
@@ -1280,10 +1285,20 @@ function draw_text(x, y, text) {
 	}
 }
 
+function clamp(x, low, high) {
+	return Math.min(Math.max(x, low), high);
+}
+
+function fold(x, low, high) {
+	var range = high - low;
+    return low + Math.abs(((x + range) % (range * 2)) - range);
+}
+
 function lerp(x, y, a) {
 	return x + a * (y - x);
 }
 
+// from max-animation.js
 function ease_in_out_cubic(t) {
 	return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
 }
