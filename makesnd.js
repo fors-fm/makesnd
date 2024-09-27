@@ -50,18 +50,10 @@ mgraphics.relative_coords = 0;
 mgraphics.autofill = 0;
 
 var hoverColor = [0.871, 0.843, 1, 1];
-var highColor = [1, 0.6, 0.667, 1];
-var midColor = [0.643, 0.388, 1, 1];
-var lowColor = [0.220, 0.329, 0.647, 1];
+var highColor = [0.686, 0.592, 0.839, 1];
+var midColor = [0.192, 0.667, 0.392, 1];
+var lowColor = [0.259, 0.275, 0.431, 1];
 var bgColor = [0.05, 0.05, 0.06, 1];
-
-highColor = [0.695, 0.573, 0.929, 1];
-midColor = [0.387, 0.749, 0.398, 1];
-lowColor = [0.282, 0.231, 0.690, 1];
-
-highColor = [0.686, 0.592, 0.839, 1];
-midColor = [0.192, 0.667, 0.392, 1];
-lowColor = [0.259, 0.275, 0.431, 1];
 
 var TWO_PI = Math.PI * 2;
 
@@ -579,7 +571,7 @@ var Cube = function(coords, rx, ry) {
 		} else if (this.nextValue[1] < 0) {
 			this.nextValue[1] = lerp(this.nextValue[1], -0.01, 0.025);
 		}
-					
+
 		this.rotateValue = this.nextValue;
 	};
 
@@ -656,7 +648,8 @@ var Spring = function(coords, tension) {
 	};
 
 	this.updateValue = function() {
-		this.interpolateSpring(this.prev, this.nextValue * 0.65 + 0.35, this.velocity, 50, 2.5);
+		this.interpolateSpring(
+			this.prev, this.nextValue * 0.65 + 0.35, this.velocity, 50, 2.5);
 		this.prev = this.tension;
 	};
 
@@ -670,9 +663,9 @@ var Spring = function(coords, tension) {
 
 	this.onidle = function(x, y) {
 		if (
-			x > this.coords[0] - 5 && 
-			x < this.coords[0] + 28 && 
-			y > this.coords[1] - 20 && 
+			x > this.coords[0] - 5 &&
+			x < this.coords[0] + 28 &&
+			y > this.coords[1] - 20 &&
 			y < this.coords[1] + 75
 		) {
 			hoverSpring = 1;
@@ -768,7 +761,7 @@ var Spring = function(coords, tension) {
 				12, 12, 4, 4
 			);
 			fill();
-						
+
 			rectangle_rounded(
 				this.coords[0] + 7, 
 				this.coords[1] + 59 - topOffset,
@@ -853,14 +846,14 @@ var Scroller = function(coords, text) {
 	this.hoverDelta = 0;
 	this.fade = 0;
 	this.active = false;
-	
+
 	this.click = function() {
 		if (this.hover) {
 			this.active = !this.active;
 			
 			if (this.active) {
 				this.phase = [0, 0];
-				
+
 				if (this.fade == 0) {
 					this.fadeInTask.interval = this.interval;
 					this.fadeInTask.repeat(this.repeats);
@@ -875,7 +868,7 @@ var Scroller = function(coords, text) {
 			}
 		}
 	};
-			
+
 	this.animate = function() {
 		this.phase[0] += 0.25 / this.text.length;
 		this.phase[1] += 0.05;
@@ -894,49 +887,49 @@ var Scroller = function(coords, text) {
 			this.phase[1] = 0;
 		}	
 	};
-	
+
 	this.setFrequency = function(x) {
 		this.freq = clamp(this.freq + x, 0, 1);
 	};
-	
+
 	this.repeats = 25;
 	this.interval = 4;
 	
 	this.fadeIn = function() {
 		this.fade = arguments.callee.task.iterations / (this.repeats);
-	}
+	};
 	
 	this.fadeOut = function() {
 		this.fade = 1 - arguments.callee.task.iterations / (this.repeats);
-	}
-	
+	};
+
 	this.fadeInTask = new Task(this.fadeIn, this);
 	this.fadeOutTask = new Task(this.fadeOut, this);
 
-	this.onidle = function(x, y) {							
+	this.onidle = function(x, y) {
 		if (
 			x > this.coords[0] - 5 && 
 			x < this.coords[0] + 100 && 
 			y > this.coords[1] - 5 && 
 			y < this.coords[1] + 15
 		) {			
-			this.hover = true;			
+			this.hover = true;
 		} else {
 			this.hover = false;
 		}
 	};
-	
-	this.animateTask = new Task(this.animate, this);		
+
+	this.animateTask = new Task(this.animate, this);
 
 	this.paint = function() {
 		with (mgraphics) {
-			if (this.active) {						
+			if (this.active) {
 				for (var i = 0; i < 12; ++i) {
 					var offset = Math.cos(this.phase[1] * TWO_PI + i * TWO_PI / 24) * 4;
 				
 					var phaseScale = this.phase[0] * (this.text.length - 11);
 					var charOffset = Math.floor(phaseScale);
-					var fade = 1
+					var fade = 1;
 				
 					if (i == 0) {
 						fade = 1 - phaseScale % 1;
@@ -957,7 +950,7 @@ var Scroller = function(coords, text) {
 			}
 		}
 	};
-}
+};
 
 var euclidOuter = new Circle(1, [98, 98], 45, 1, 0.2, 0);
 var euclidInner = new Circle(2, [98, 98], 25, 1, 0.4, 0);
@@ -998,7 +991,7 @@ function paint() {
 		set_source_rgba(bgColor);
 		rectangle_rounded(0, 0, 525, 195, 16, 16);
 		fill();
-				
+
 		euclidOuter.paint(lowColor);
 		euclidInner.paint(midColor);
 		spring.paint();
@@ -1274,10 +1267,9 @@ function draw_text(x, y, text) {
 		select_font_face("Ableton Sans Medium");
 		set_font_size(12, 0);
 
-        var ascent = font_extents()[0];
-        var descent = font_extents()[1];
-        var height = font_extents()[2];
-        var metric = text_measure(text);
+		var descent = font_extents()[1];
+		var height = font_extents()[2];
+		var metric = text_measure(text);
 
 		move_to(x - metric[0] / 2, y + height - descent);
 		show_text(text);
@@ -1286,11 +1278,6 @@ function draw_text(x, y, text) {
 
 function clamp(x, low, high) {
 	return Math.min(Math.max(x, low), high);
-}
-
-function fold(x, low, high) {
-	var range = high - low;
-    return low + Math.abs(((x + range) % (range * 2)) - range);
 }
 
 function lerp(x, y, a) {
