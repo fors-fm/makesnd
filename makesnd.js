@@ -53,13 +53,15 @@ var hoverColor = [0.871, 0.843, 1, 1];
 var highColor = [1, 0.6, 0.667, 1];
 var midColor = [0.643, 0.388, 1, 1];
 var lowColor = [0.220, 0.329, 0.647, 1];
-var bgColor = [0.059, 0.055, 0.075, 1];
+var bgColor = [0.05, 0.05, 0.06, 1];
 
-/*
 highColor = [0.695, 0.573, 0.929, 1];
-midColor = [0.247, 0.749, 0.318, 1];
+midColor = [0.387, 0.749, 0.398, 1];
 lowColor = [0.282, 0.231, 0.690, 1];
-*/
+
+highColor = [0.686, 0.592, 0.839, 1];
+midColor = [0.192, 0.667, 0.392, 1];
+lowColor = [0.259, 0.275, 0.431, 1];
 
 var TWO_PI = Math.PI * 2;
 
@@ -458,7 +460,6 @@ var Cube = function(coords, rx, ry) {
 	this.intervalHover = 4;
 	this.fade = 0;
 
-	this.prevValue = [0, 0];
 	this.nextValue = [0, 0];
 	this.rotateValue = [0, 0];
 
@@ -567,21 +568,19 @@ var Cube = function(coords, rx, ry) {
 	};
 
 	this.updateValue = function() {
-		if (Math.abs(this.nextValue[0]) > 0.01) {
-			this.prevValue[0] = this.nextValue[0];
-			this.rotateValue[0] = this.nextValue[0];
-		} else {
-			this.rotateValue[0] = this.prevValue[0];
+		if (this.nextValue[0] > 0) {
+			this.nextValue[0] = lerp(this.nextValue[0], 0.01, 0.025);
+		} else if (this.nextValue[0] < 0) {
+			this.nextValue[0] = lerp(this.nextValue[0], -0.01, 0.025);
 		}
-
-		if (Math.abs(this.nextValue[1]) > 0.01) {
-			this.prevValue[1] = this.nextValue[1];
-			this.rotateValue[1] = this.nextValue[1];
-		} else {
-			this.rotateValue[1] = this.prevValue[1];
+		
+		if (this.nextValue[1] > 0) {
+			this.nextValue[1] = lerp(this.nextValue[1], 0.01, 0.025);
+		} else if (this.nextValue[1] < 0) {
+			this.nextValue[1] = lerp(this.nextValue[1], -0.01, 0.025);
 		}
-
-		this.nextValue = [this.nextValue[0] * 0.925, this.nextValue[1] * 0.925];
+					
+		this.rotateValue = this.nextValue;
 	};
 
 	this.getValue = function() {
